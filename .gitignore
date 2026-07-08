@@ -1,0 +1,29 @@
+# Build
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Rider
+.idea/
+
+# Logs
+*.log
+
+# ASP.NET
+appsettings.Development.json
+
+# Publish
+publish/
+build-output/
+
+# React
+admin-frontend/node_modules/
+admin-frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
