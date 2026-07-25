@@ -28,10 +28,19 @@ public sealed class AdminRepository
             .SingleOrDefault(user => user.Username == username.Trim());
     }
 
-    public IReadOnlyCollection<Restaurant> GetAllRestaurants()
+    public IReadOnlyCollection<Restaurant> GetAllRestaurants(string? search = null)
     {
-        return _dbContext.Restaurants
-            .AsNoTracking()
+        var query = _dbContext.Restaurants.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(restaurant =>
+                restaurant.Name.Contains(normalizedSearch) ||
+                restaurant.City.Contains(normalizedSearch));
+        }
+
+        return query
             .OrderBy(restaurant => restaurant.CreatedAt)
             .ToArray();
     }

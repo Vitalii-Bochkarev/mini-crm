@@ -85,7 +85,7 @@ builder.Services.AddAuthorization();
 // Database
 builder.Services.AddDbContext<AdminDbContext>(options =>
     options.UseNpgsql(
-        "Host=localhost;Port=5432;Database=adminpanel;Username=postgres;Password=Postgres123%"));
+        "Host=localhost;Port=5432;Database=adminpanel;Username=postgres;Password=postgres123"));
 
 // Services
 builder.Services.AddScoped<AdminRepository>();
@@ -447,9 +447,9 @@ static IResult GetOverview(AdminRepository repository)
     return Results.Ok(overview);
 }
 
-static IResult GetRestaurants(AdminRepository repository)
+static IResult GetRestaurants(string? search, AdminRepository repository)
 {
-    var restaurants = repository.GetAllRestaurants()
+    var restaurants = repository.GetAllRestaurants(search)
         .Select(ToRestaurantResponse);
 
     return Results.Ok(restaurants);
@@ -575,4 +575,3 @@ record WeatherForecast(
         32 + (int)(TemperatureC / 0.5556);
 }
 
-// Search feature branch
