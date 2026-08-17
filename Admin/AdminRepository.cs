@@ -28,22 +28,40 @@ public sealed class AdminRepository
             .SingleOrDefault(user => user.Username == username.Trim());
     }
 
-    public IReadOnlyCollection<Restaurant> GetAllRestaurants(string? search = null)
+    public MyProject2.Admin.PagedResult<Restaurant> GetAllRestaurants(
+    string? search = null,
+    int page = 1,
+    int pageSize = 20)
+   {
+    page = Math.Max(1, page);
+    pageSize = Math.Clamp(pageSize, 1, 100);
+
+    var query = _dbContext.Restaurants.AsNoTracking();
+
+    if (!string.IsNullOrWhiteSpace(search))
     {
-        var query = _dbContext.Restaurants.AsNoTracking();
+        var normalizedSearch = search.Trim();
 
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var normalizedSearch = search.Trim();
-            query = query.Where(restaurant =>
-                restaurant.Name.Contains(normalizedSearch) ||
-                restaurant.City.Contains(normalizedSearch));
-        }
-
-        return query
-            .OrderBy(restaurant => restaurant.CreatedAt)
-            .ToArray();
+        query = query.Where(restaurant =>
+            restaurant.Name.Contains(normalizedSearch) ||
+            restaurant.City.Contains(normalizedSearch));
     }
+
+    var totalCount = query.Count();
+
+    var items = query
+        .OrderBy(restaurant => restaurant.CreatedAt)
+        .ThenBy(restaurant => restaurant.Id)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToArray();
+
+    return new PagedResult<Restaurant>(
+        items,
+        totalCount,
+        page,
+        pageSize);
+}
 
     public Restaurant? GetRestaurant(Guid id)
     {
@@ -87,12 +105,45 @@ public sealed class AdminRepository
         return true;
     }
 
-    public IReadOnlyCollection<Employee> GetAllEmployees()
+    public PagedResult<Employee> GetAllEmployees(
+        string? search = null,
+        int page = 1,
+        int pageSize = 20)
     {
-        return _dbContext.Employees
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _dbContext.Employees
             .AsNoTracking()
             .Include(e => e.Restaurant)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+
+            query = query.Where(employee =>
+                employee.FirstName.Contains(normalizedSearch) ||
+                employee.LastName.Contains(normalizedSearch) ||
+                employee.Position.Contains(normalizedSearch) ||
+                employee.Restaurant != null && employee.Restaurant.Name.Contains(normalizedSearch));
+        }
+
+        var totalCount = query.Count();
+
+        var items = query
+            .OrderBy(employee => employee.LastName)
+            .ThenBy(employee => employee.FirstName)
+            .ThenBy(employee => employee.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToArray();
+
+        return new PagedResult<Employee>(
+            items,
+            totalCount,
+            page,
+            pageSize);
     }
 
     public Employee? GetEmployee(Guid id)
