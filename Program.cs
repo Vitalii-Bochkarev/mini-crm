@@ -55,12 +55,11 @@ builder.Services.AddCors(options =>
 });
 
 // JWT settings
-var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ??
-    new JwtSettings(
-        Issuer: "MyProject2",
-        Audience: "MyProject2",
-        SecretKey: builder.Configuration["Jwt:SecretKey"] ?? "SuperSecretJwtKey_ChangeThis_AtLeast32Chars!",
-        ExpireMinutes: 60);
+var jwtSettings = new JwtSettings(
+    Issuer: builder.Configuration["Jwt:Issuer"] ?? "MyProject2",
+    Audience: builder.Configuration["Jwt:Audience"] ?? "MyProject2",
+    SecretKey: builder.Configuration["Jwt:SecretKey"] ?? "SuperSecretJwtKey_ChangeThis_AtLeast32Chars!",
+    ExpireMinutes: int.TryParse(builder.Configuration["Jwt:ExpireMinutes"], out var expireMinutes) ? expireMinutes : 60);
 
 builder.Services.AddSingleton(jwtSettings);
 
@@ -186,12 +185,20 @@ admin.MapGet("/users", GetUsers)
     .RequireAuthorization(policy =>
         policy.RequireRole("Administrator", "Editor", "Viewer"));
 
-static IResult GetEmployees(AdminRepository repository)
+static IResult GetEmployees(
+    string? search,
+    int page,
+    int pageSize,
+    AdminRepository repository)
 {
-    var employees = repository.GetAllEmployees()
-        .Select(ToEmployeeResponse);
+    var pagedEmployees = repository.GetAllEmployees(search, page, pageSize);
+    var response = new PagedResult<EmployeeResponse>(
+        pagedEmployees.Items.Select(ToEmployeeResponse).ToArray(),
+        pagedEmployees.TotalCount,
+        pagedEmployees.Page,
+        pagedEmployees.PageSize);
 
-    return Results.Ok(employees);
+    return Results.Ok(response);
 }
 
 static IResult GetEmployeeById(Guid id, AdminRepository repository)
@@ -447,12 +454,20 @@ static IResult GetOverview(AdminRepository repository)
     return Results.Ok(overview);
 }
 
-static IResult GetRestaurants(string? search, AdminRepository repository)
+static IResult GetRestaurants(
+    string? search,
+    int page,
+    int pageSize,
+    AdminRepository repository)
 {
-    var restaurants = repository.GetAllRestaurants(search)
-        .Select(ToRestaurantResponse);
+    var pagedRestaurants = repository.GetAllRestaurants(search, page, pageSize);
+    var response = new PagedResult<RestaurantResponse>(
+        pagedRestaurants.Items.Select(ToRestaurantResponse).ToArray(),
+        pagedRestaurants.TotalCount,
+        pagedRestaurants.Page,
+        pagedRestaurants.PageSize);
 
-    return Results.Ok(restaurants);
+    return Results.Ok(response);
 }
 
 static IResult GetRestaurantById(Guid id, AdminRepository repository)
