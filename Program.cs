@@ -187,11 +187,13 @@ admin.MapGet("/users", GetUsers)
 
 static IResult GetEmployees(
     string? search,
-    int page,
-    int pageSize,
+    int? page,
+    int? pageSize,
+    string? sortBy,
+    string? sortDirection,
     AdminRepository repository)
 {
-    var pagedEmployees = repository.GetAllEmployees(search, page, pageSize);
+    var pagedEmployees = repository.GetAllEmployees(search, page ?? 1, pageSize ?? 20, sortBy, sortDirection);
     var response = new PagedResult<EmployeeResponse>(
         pagedEmployees.Items.Select(ToEmployeeResponse).ToArray(),
         pagedEmployees.TotalCount,
@@ -456,11 +458,13 @@ static IResult GetOverview(AdminRepository repository)
 
 static IResult GetRestaurants(
     string? search,
-    int page,
-    int pageSize,
+    int? page,
+    int? pageSize,
+    string? sortBy,
+    string? sortDirection,
     AdminRepository repository)
 {
-    var pagedRestaurants = repository.GetAllRestaurants(search, page, pageSize);
+    var pagedRestaurants = repository.GetAllRestaurants(search, page ?? 1, pageSize ?? 20, sortBy, sortDirection);
     var response = new PagedResult<RestaurantResponse>(
         pagedRestaurants.Items.Select(ToRestaurantResponse).ToArray(),
         pagedRestaurants.TotalCount,

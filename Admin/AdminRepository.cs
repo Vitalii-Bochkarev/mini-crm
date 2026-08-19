@@ -29,39 +29,56 @@ public sealed class AdminRepository
     }
 
     public MyProject2.Admin.PagedResult<Restaurant> GetAllRestaurants(
-    string? search = null,
-    int page = 1,
-    int pageSize = 20)
-   {
-    page = Math.Max(1, page);
-    pageSize = Math.Clamp(pageSize, 1, 100);
-
-    var query = _dbContext.Restaurants.AsNoTracking();
-
-    if (!string.IsNullOrWhiteSpace(search))
+        string? search = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortBy = null,
+        string? sortDirection = null)
     {
-        var normalizedSearch = search.Trim();
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
 
-        query = query.Where(restaurant =>
-            restaurant.Name.Contains(normalizedSearch) ||
-            restaurant.City.Contains(normalizedSearch));
+        var query = _dbContext.Restaurants.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+
+            query = query.Where(restaurant =>
+                restaurant.Name.Contains(normalizedSearch) ||
+                restaurant.City.Contains(normalizedSearch));
+        }
+
+        var totalCount = query.Count();
+        var normalizedSortBy = sortBy?.Trim().ToLowerInvariant();
+        var descending = string.Equals(sortDirection?.Trim(), "desc", StringComparison.OrdinalIgnoreCase);
+
+        var orderedQuery = normalizedSortBy switch
+        {
+            "name" => descending
+                ? query.OrderByDescending(restaurant => restaurant.Name)
+                : query.OrderBy(restaurant => restaurant.Name),
+            "city" => descending
+                ? query.OrderByDescending(restaurant => restaurant.City)
+                : query.OrderBy(restaurant => restaurant.City),
+            "createdat" => descending
+                ? query.OrderByDescending(restaurant => restaurant.CreatedAt)
+                : query.OrderBy(restaurant => restaurant.CreatedAt),
+            _ => query.OrderBy(restaurant => restaurant.CreatedAt)
+        };
+
+        var items = orderedQuery
+            .ThenBy(restaurant => restaurant.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToArray();
+
+        return new PagedResult<Restaurant>(
+            items,
+            totalCount,
+            page,
+            pageSize);
     }
-
-    var totalCount = query.Count();
-
-    var items = query
-        .OrderBy(restaurant => restaurant.CreatedAt)
-        .ThenBy(restaurant => restaurant.Id)
-        .Skip((page - 1) * pageSize)
-        .Take(pageSize)
-        .ToArray();
-
-    return new PagedResult<Restaurant>(
-        items,
-        totalCount,
-        page,
-        pageSize);
-}
 
     public Restaurant? GetRestaurant(Guid id)
     {
@@ -108,7 +125,9 @@ public sealed class AdminRepository
     public PagedResult<Employee> GetAllEmployees(
         string? search = null,
         int page = 1,
-        int pageSize = 20)
+        int pageSize = 20,
+        string? sortBy = null,
+        string? sortDirection = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -131,9 +150,27 @@ public sealed class AdminRepository
 
         var totalCount = query.Count();
 
-        var items = query
-            .OrderBy(employee => employee.LastName)
-            .ThenBy(employee => employee.FirstName)
+        var normalizedSortBy = sortBy?.Trim().ToLowerInvariant();
+        var descending = string.Equals(sortDirection?.Trim(), "desc", StringComparison.OrdinalIgnoreCase);
+
+        var orderedQuery = normalizedSortBy switch
+        {
+            "firstname" => descending
+                ? query.OrderByDescending(employee => employee.FirstName)
+                : query.OrderBy(employee => employee.FirstName),
+            "lastname" => descending
+                ? query.OrderByDescending(employee => employee.LastName).ThenBy(employee => employee.FirstName)
+                : query.OrderBy(employee => employee.LastName).ThenBy(employee => employee.FirstName),
+            "position" => descending
+                ? query.OrderByDescending(employee => employee.Position)
+                : query.OrderBy(employee => employee.Position),
+            "salary" => descending
+                ? query.OrderByDescending(employee => employee.Salary)
+                : query.OrderBy(employee => employee.Salary),
+            _ => query.OrderBy(employee => employee.LastName).ThenBy(employee => employee.FirstName)
+        };
+
+        var items = orderedQuery
             .ThenBy(employee => employee.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
