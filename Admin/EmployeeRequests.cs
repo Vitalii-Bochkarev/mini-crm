@@ -4,47 +4,83 @@ namespace MyProject2.Admin;
 
 public sealed class EmployeeCreateRequest
 {
-    [Required]
-    [MinLength(2)]
-    public string FirstName { get; init; } = string.Empty;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _position = string.Empty;
 
     [Required]
-    [MinLength(2)]
-    public string LastName { get; init; } = string.Empty;
+    [StringLength(50, MinimumLength = 2)]
+    public string FirstName
+    {
+        get => _firstName;
+        init => _firstName = RequestText.Normalize(value);
+    }
 
     [Required]
-    [MinLength(2)]
-    public string Position { get; init; } = string.Empty;
+    [StringLength(50, MinimumLength = 2)]
+    public string LastName
+    {
+        get => _lastName;
+        init => _lastName = RequestText.Normalize(value);
+    }
+
+    [Required]
+    [StringLength(100, MinimumLength = 2)]
+    public string Position
+    {
+        get => _position;
+        init => _position = RequestText.Normalize(value);
+    }
 
     [Range(0, 9999999.99)]
+    [DecimalScale(2)]
     public decimal Salary { get; init; }
 
     public bool IsActive { get; init; } = true;
 
     [Required]
+    [NotEmptyGuid]
     public Guid RestaurantId { get; init; }
 }
 
 public sealed class EmployeeUpdateRequest
 {
-    [Required]
-    [MinLength(2)]
-    public string FirstName { get; init; } = string.Empty;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _position = string.Empty;
 
     [Required]
-    [MinLength(2)]
-    public string LastName { get; init; } = string.Empty;
+    [StringLength(50, MinimumLength = 2)]
+    public string FirstName
+    {
+        get => _firstName;
+        init => _firstName = RequestText.Normalize(value);
+    }
 
     [Required]
-    [MinLength(2)]
-    public string Position { get; init; } = string.Empty;
+    [StringLength(50, MinimumLength = 2)]
+    public string LastName
+    {
+        get => _lastName;
+        init => _lastName = RequestText.Normalize(value);
+    }
+
+    [Required]
+    [StringLength(100, MinimumLength = 2)]
+    public string Position
+    {
+        get => _position;
+        init => _position = RequestText.Normalize(value);
+    }
 
     [Range(0, 9999999.99)]
+    [DecimalScale(2)]
     public decimal Salary { get; init; }
 
     public bool IsActive { get; init; } = true;
 
     [Required]
+    [NotEmptyGuid]
     public Guid RestaurantId { get; init; }
 }
 

@@ -241,8 +241,8 @@ public sealed class AdminRepository
 
     public AdminUser Create(string username, string email, string role, string password)
     {
-        var (hash, salt) = PasswordHasher.HashPassword(password.Trim());
-        var user = new AdminUser(Guid.NewGuid(), username.Trim(), email.Trim(), true, role.Trim())
+        var (hash, salt) = PasswordHasher.HashPassword(password);
+        var user = new AdminUser(Guid.NewGuid(), username.Trim(), email.Trim(), true, NormalizeRole(role))
         {
             PasswordHash = hash,
             PasswordSalt = salt
@@ -264,11 +264,11 @@ public sealed class AdminRepository
         user.Username = username.Trim();
         user.Email = email.Trim();
         user.IsActive = isActive;
-        user.Role = role.Trim();
+        user.Role = NormalizeRole(role);
 
         if (!string.IsNullOrWhiteSpace(password))
         {
-            var (hash, salt) = PasswordHasher.HashPassword(password.Trim());
+            var (hash, salt) = PasswordHasher.HashPassword(password);
             user.PasswordHash = hash;
             user.PasswordSalt = salt;
         }
@@ -298,8 +298,20 @@ public sealed class AdminRepository
             return null;
         }
 
-        return PasswordHasher.VerifyPassword(password.Trim(), user.PasswordHash, user.PasswordSalt)
+        return PasswordHasher.VerifyPassword(password, user.PasswordHash, user.PasswordSalt)
             ? user
             : null;
+    }
+
+    private static string NormalizeRole(string role)
+    {
+        var normalizedRole = role.Trim();
+        return normalizedRole.ToUpperInvariant() switch
+        {
+            "ADMINISTRATOR" => "Administrator",
+            "EDITOR" => "Editor",
+            "VIEWER" => "Viewer",
+            _ => normalizedRole
+        };
     }
 }

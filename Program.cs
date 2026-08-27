@@ -156,9 +156,10 @@ app.MapGet("/weatherforecast", () =>
 // Authentication routes
 app.MapPost("/auth/login", (AdminUserLoginRequest request, AdminRepository repository) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+    var validationErrors = GetValidationErrors(request);
+    if (validationErrors is not null)
     {
-        return Results.BadRequest("Username and password are required.");
+        return Results.ValidationProblem(validationErrors);
     }
 
     var user = repository.Authenticate(request.Username, request.Password);
@@ -415,6 +416,12 @@ static IResult CreateUser(AdminUserCreateRequest request, AdminRepository reposi
 
 static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminRepository repository)
 {
+    var validationErrors = GetValidationErrors(request);
+    if (validationErrors is not null)
+    {
+        return Results.ValidationProblem(validationErrors);
+    }
+
     var updated = repository.Update(
         id,
         request.Username,
