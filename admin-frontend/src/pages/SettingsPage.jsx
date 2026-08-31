@@ -3,19 +3,19 @@ import React from "react";
 function SettingsPage({ username }) {
   const settingsCards = [
     {
-      title: "Security",
-      description: "JWT authentication is enforced through the existing API service and Bearer token flow.",
-      details: ["Token stored in localStorage", "Protected routes require an active session", "Logout clears the current session"],
+      title: "Безопасность",
+      description: "JWT-аутентификация выполняется существующим сервисом API с помощью Bearer-токена.",
+      details: ["Токен хранится в localStorage", "Для защищённых маршрутов нужна активная сессия", "При выходе текущая сессия завершается"],
     },
     {
-      title: "Portal preferences",
-      description: `Current admin session: ${username || "Unknown user"}`,
-      details: ["Dark UI preserved", "Sidebar navigation uses router links", "All pages share the same admin layout"],
+      title: "Настройки панели",
+      description: `Текущая сессия администратора: ${username || "Неизвестный пользователь"}`,
+      details: ["Используется тёмное оформление", "Боковое меню использует ссылки маршрутизатора", "Все страницы используют общий макет панели администратора"],
     },
     {
-      title: "System status",
-      description: "The frontend remains connected to the same backend endpoints for CRUD and auth operations.",
-      details: ["Login endpoint: /auth/login", "User management endpoint: /admin/users", "Routes configured in React Router"],
+      title: "Состояние системы",
+      description: "Frontend подключён к прежним endpoint’ам backend для операций CRUD и авторизации.",
+      details: ["Endpoint входа: /auth/login", "Endpoint управления пользователями: /admin/users", "Маршруты настроены в React Router"],
     },
   ];
 
@@ -23,13 +23,13 @@ function SettingsPage({ username }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: "#93c5fd", margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: 0.5 }}>
-          Settings
+          Настройки
         </p>
         <h2 style={{ color: "#e6eef8", margin: "8px 0 6px", fontSize: 28 }}>
-          Admin settings
+          Настройки администратора
         </h2>
         <p style={{ color: "#9ca3af", margin: 0, fontSize: 14 }}>
-          Review the current portal configuration and security details.
+          Просмотрите текущую конфигурацию панели и параметры безопасности.
         </p>
       </div>
 

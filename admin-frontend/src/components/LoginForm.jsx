@@ -15,17 +15,17 @@ function LoginForm({ username, password, loading, error, onUsernameChange, onPas
       }}
     >
       <h2 style={{ color: "#e6eef8", margin: 0, marginBottom: 8, fontSize: 28 }}>
-        Admin Portal
+        Панель администратора
       </h2>
       <p style={{ color: "#9ca3af", margin: "0 0 24px 0", fontSize: 14 }}>
-        Sign in to your account
+        Войдите в свою учётную запись
       </p>
 
-      <label style={{ color: "#9ca3af", fontSize: 13 }}>Username</label>
+      <label style={{ color: "#9ca3af", fontSize: 13 }}>Имя пользователя</label>
       <input
         value={username}
         onChange={onUsernameChange}
-        placeholder="Enter your username"
+        placeholder="Введите имя пользователя"
         autoComplete="username"
         required
         style={{
@@ -43,11 +43,11 @@ function LoginForm({ username, password, loading, error, onUsernameChange, onPas
         }}
       />
 
-      <label style={{ color: "#9ca3af", fontSize: 13 }}>Password</label>
+      <label style={{ color: "#9ca3af", fontSize: 13 }}>Пароль</label>
       <input
         value={password}
         onChange={onPasswordChange}
-        placeholder="Enter your password"
+        placeholder="Введите пароль"
         type="password"
         autoComplete="current-password"
         required
@@ -113,7 +113,7 @@ function LoginForm({ username, password, loading, error, onUsernameChange, onPas
             </circle>
           </svg>
         ) : null}
-        {loading ? "Signing in..." : "Sign in"}
+        {loading ? "Вход..." : "Войти"}
       </button>
     </form>
   );

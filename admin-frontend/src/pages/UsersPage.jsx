@@ -1,6 +1,7 @@
 import React from "react";
 import CreateUserForm from "../components/CreateUserForm";
 import UsersTable from "../components/UsersTable";
+import { ROLE_OPTIONS } from "../utils/formatters";
 
 function UsersPage({
   users,
@@ -46,9 +47,9 @@ function UsersPage({
         }}
       >
         <div style={{ marginBottom: 20 }}>
-          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Admin Users</h3>
+          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Пользователи системы</h3>
           <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
-            Manage system administrators and their access.
+            Управляйте пользователями системы и их доступом.
           </p>
         </div>
 
@@ -97,9 +98,9 @@ function UsersPage({
               }}
             >
               <div>
-                <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Edit User</h3>
+                <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Изменение пользователя</h3>
                 <p style={{ color: "#9ca3af", margin: "6px 0 0 0", fontSize: 14 }}>
-                  Update username, email, and role for this administrator.
+                  Измените имя пользователя, электронную почту и роль.
                 </p>
               </div>
               <button
@@ -137,7 +138,7 @@ function UsersPage({
                   <label
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
-                    Username
+                    Имя пользователя
                   </label>
                   <input
                     type="text"
@@ -159,7 +160,7 @@ function UsersPage({
                   <label
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
-                    Email
+                    Электронная почта
                   </label>
                   <input
                     type="email"
@@ -181,7 +182,7 @@ function UsersPage({
                   <label
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
-                    Role
+                    Роль
                   </label>
                   <select
                     value={editUserForm.role}
@@ -199,9 +200,11 @@ function UsersPage({
                       opacity: editUser.username === currentUsername ? 0.75 : 1,
                     }}
                   >
-                    <option>Administrator</option>
-                    <option>SuperAdmin</option>
-                    <option>Viewer</option>
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -219,7 +222,7 @@ function UsersPage({
                     cursor: "pointer",
                   }}
                 >
-                  Cancel
+                  Отмена
                 </button>
                 <button
                   type="submit"
@@ -235,7 +238,7 @@ function UsersPage({
                     opacity: editUserLoading ? 0.75 : 1,
                   }}
                 >
-                  {editUserLoading ? "Saving..." : "Save Changes"}
+                  {editUserLoading ? "Сохранение..." : "Сохранить изменения"}
                 </button>
               </div>
             </form>

@@ -165,7 +165,9 @@ app.MapPost("/auth/login", (AdminUserLoginRequest request, AdminRepository repos
     var user = repository.Authenticate(request.Username, request.Password);
     if (user is null)
     {
-        return Results.Unauthorized();
+        return Results.Json(
+            new { error = "Неверное имя пользователя или пароль." },
+            statusCode: StatusCodes.Status401Unauthorized);
     }
 
     var token = GenerateJwtToken(user, jwtSettings);
@@ -208,7 +210,7 @@ static IResult GetEmployeeById(Guid id, AdminRepository repository)
 {
     var employee = repository.GetEmployee(id);
     return employee is null
-        ? Results.NotFound()
+        ? Results.NotFound(new { error = "Сотрудник не найден." })
         : Results.Ok(ToEmployeeResponse(employee));
 }
 
@@ -232,7 +234,7 @@ static IResult CreateEmployee(EmployeeCreateRequest request, AdminRepository rep
     var restaurant = repository.GetRestaurant(request.RestaurantId);
     if (restaurant is null)
     {
-        return Results.BadRequest("Invalid restaurant ID.");
+        return Results.BadRequest(new { error = "Ресторан для сотрудника не найден." });
     }
 
     var employee = repository.CreateEmployee(
@@ -258,7 +260,7 @@ static IResult UpdateEmployee(Guid id, EmployeeUpdateRequest request, AdminRepos
     var restaurant = repository.GetRestaurant(request.RestaurantId);
     if (restaurant is null)
     {
-        return Results.BadRequest("Invalid restaurant ID.");
+        return Results.BadRequest(new { error = "Ресторан для сотрудника не найден." });
     }
 
     var updated = repository.UpdateEmployee(
@@ -272,7 +274,7 @@ static IResult UpdateEmployee(Guid id, EmployeeUpdateRequest request, AdminRepos
 
     return updated
         ? Results.NoContent()
-        : Results.NotFound();
+        : Results.NotFound(new { error = "Сотрудник не найден." });
 }
 
 static IResult DeleteEmployee(Guid id, AdminRepository repository)
@@ -280,7 +282,7 @@ static IResult DeleteEmployee(Guid id, AdminRepository repository)
     var deleted = repository.DeleteEmployee(id);
     return deleted
         ? Results.NoContent()
-        : Results.NotFound();
+        : Results.NotFound(new { error = "Сотрудник не найден." });
 }
 
 static IResult GetUsers(AdminRepository repository)
@@ -343,7 +345,7 @@ static IResult GetUserById(Guid id, AdminRepository repository)
 {
     var user = repository.Get(id);
     return user is null
-        ? Results.NotFound()
+        ? Results.NotFound(new { error = "Пользователь не найден." })
         : Results.Ok(ToAdminUserResponse(user));
 }
 
@@ -391,7 +393,7 @@ static void ValidateProperty<T>(
             errors[memberName] = memberErrors;
         }
 
-        memberErrors.Add(validationResult.ErrorMessage ?? "Invalid value.");
+        memberErrors.Add(validationResult.ErrorMessage ?? "Недопустимое значение.");
     }
 }
 
@@ -432,7 +434,7 @@ static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminReposito
 
     return updated
         ? Results.NoContent()
-        : Results.NotFound();
+        : Results.NotFound(new { error = "Пользователь не найден." });
 }
 
 
@@ -441,7 +443,7 @@ static IResult DeleteUser(Guid id, AdminRepository repository)
     var deleted = repository.Delete(id);
     return deleted
         ? Results.NoContent()
-        : Results.NotFound();
+        : Results.NotFound(new { error = "Пользователь не найден." });
 }
 
 
@@ -485,7 +487,7 @@ static IResult GetRestaurantById(Guid id, AdminRepository repository)
 {
     var restaurant = repository.GetRestaurant(id);
     return restaurant is null
-        ? Results.NotFound()
+        ? Results.NotFound(new { error = "Ресторан не найден." })
         : Results.Ok(ToRestaurantResponse(restaurant));
 }
 
@@ -512,7 +514,7 @@ static IResult UpdateRestaurant(Guid id, RestaurantUpdateRequest request, AdminR
     var updated = repository.UpdateRestaurant(id, request.Name, request.City, request.IsActive);
     return updated
         ? Results.NoContent()
-        : Results.NotFound();
+        : Results.NotFound(new { error = "Ресторан не найден." });
 }
 
 static IResult DeleteRestaurant(Guid id, AdminRepository repository)
@@ -520,7 +522,7 @@ static IResult DeleteRestaurant(Guid id, AdminRepository repository)
     var deleted = repository.DeleteRestaurant(id);
     return deleted
         ? Results.NoContent()
-        : Results.NotFound();
+        : Results.NotFound(new { error = "Ресторан не найден." });
 }
 
 static Dictionary<string, string[]>? GetValidationErrors<T>(T request)
@@ -549,7 +551,7 @@ static Dictionary<string, string[]>? GetValidationErrors<T>(T request)
                 errors[memberName] = memberErrors;
             }
 
-            memberErrors.Add(validationResult.ErrorMessage ?? "Invalid value.");
+            memberErrors.Add(validationResult.ErrorMessage ?? "Недопустимое значение.");
         }
     }
 

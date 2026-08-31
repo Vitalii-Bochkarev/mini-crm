@@ -12,9 +12,9 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
       }}
     >
       <div style={{ marginBottom: 20 }}>
-        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Add Employee</h3>
+        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Добавление сотрудника</h3>
         <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
-          Add a new employee to a restaurant.
+          Добавьте нового сотрудника ресторана.
         </p>
       </div>
 
@@ -49,7 +49,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <div>
           <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
-            First Name *
+            Имя *
           </label>
           <input
             type="text"
@@ -70,7 +70,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
 
         <div>
           <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
-            Last Name *
+            Фамилия *
           </label>
           <input
             type="text"
@@ -91,7 +91,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
 
         <div>
           <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
-            Position *
+            Должность *
           </label>
           <input
             type="text"
@@ -112,7 +112,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
 
         <div>
           <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
-            Salary
+            Зарплата
           </label>
           <input
             type="number"
@@ -133,7 +133,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
 
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
-            Restaurant *
+            Ресторан *
           </label>
           <select
             value={formData.restaurantId}
@@ -149,7 +149,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
             }}
             required
           >
-            <option value="">Select a restaurant</option>
+            <option value="">Выберите ресторан</option>
             {restaurants.map((restaurant) => (
               <option key={restaurant.id} value={restaurant.id}>
                 {restaurant.name}
@@ -166,7 +166,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
               onChange={(e) => onFieldChange("isActive", e.target.checked)}
               style={{ marginRight: 10 }}
             />
-            Active
+            Активен
           </label>
         </div>
 
@@ -187,7 +187,7 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
               opacity: loading ? 0.75 : 1,
             }}
           >
-            {loading ? "Adding..." : "Add Employee"}
+            {loading ? "Добавление..." : "Добавить сотрудника"}
           </button>
         </div>
       </form>

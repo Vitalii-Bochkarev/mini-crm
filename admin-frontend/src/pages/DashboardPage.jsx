@@ -5,13 +5,13 @@ function DashboardPage({ stats, username }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: "#93c5fd", margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: 0.5 }}>
-          Overview
+          Обзор
         </p>
         <h2 style={{ color: "#e6eef8", margin: "8px 0 6px", fontSize: 28 }}>
-          Welcome back, {username || "Admin"}
+          С возвращением, {username || "Администратор"}
         </h2>
         <p style={{ color: "#9ca3af", margin: 0, fontSize: 14 }}>
-          Monitor access, review user activity, and manage admin permissions from one place.
+          Контролируйте доступ, просматривайте активность и управляйте правами пользователей.
         </p>
       </div>
 
@@ -89,9 +89,9 @@ function DashboardPage({ stats, username }) {
             padding: 24,
           }}
         >
-          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Quick actions</h3>
+          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Быстрые действия</h3>
           <p style={{ color: "#9ca3af", margin: "8px 0 18px 0", fontSize: 14 }}>
-            Jump into user management or review settings for the admin portal.
+            Перейдите к управлению пользователями или проверьте настройки панели администратора.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <span
@@ -104,7 +104,7 @@ function DashboardPage({ stats, username }) {
                 fontWeight: 700,
               }}
             >
-              JWT-protected routes
+              Маршруты защищены JWT
             </span>
             <span
               style={{
@@ -116,7 +116,7 @@ function DashboardPage({ stats, username }) {
                 fontWeight: 700,
               }}
             >
-              CRUD preserved
+              CRUD работает без изменений
             </span>
           </div>
         </div>
@@ -130,16 +130,16 @@ function DashboardPage({ stats, username }) {
             padding: 24,
           }}
         >
-          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>System notes</h3>
+          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Сведения о системе</h3>
           <p style={{ color: "#9ca3af", margin: "8px 0 18px 0", fontSize: 14 }}>
-            All API calls remain routed through the existing service layer, including login, create, update, and delete operations.
+            Все вызовы API проходят через существующий сервисный слой, включая вход, создание, изменение и удаление.
           </p>
           <div style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1.7 }}>
-            • Auth state is still driven by the JWT in localStorage
+            • Состояние авторизации определяется JWT в localStorage
             <br />
-            • Sidebar navigation is now backed by React Router
+            • Навигация бокового меню работает через React Router
             <br />
-            • The dark admin theme is preserved across all pages
+            • Тёмная тема панели администратора используется на всех страницах
           </div>
         </div>
       </div>

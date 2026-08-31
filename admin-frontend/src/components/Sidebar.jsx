@@ -3,11 +3,11 @@ import { NavLink } from "react-router-dom";
 
 function Sidebar({ onLogout }) {
   const navItems = [
-    { label: "Dashboard", icon: "📊", to: "/" },
-    { label: "Users", icon: "👥", to: "/users" },
-    { label: "Restaurants", icon: "🍽️", to: "/restaurants" },
-    { label: "Employees", icon: "👨‍💼", to: "/employees" },
-    { label: "Settings", icon: "⚙️", to: "/settings" },
+    { label: "Обзор", icon: "📊", to: "/" },
+    { label: "Пользователи", icon: "👥", to: "/users" },
+    { label: "Рестораны", icon: "🍽️", to: "/restaurants" },
+    { label: "Сотрудники", icon: "👨‍💼", to: "/employees" },
+    { label: "Настройки", icon: "⚙️", to: "/settings" },
   ];
 
   return (
@@ -23,7 +23,7 @@ function Sidebar({ onLogout }) {
       }}
     >
       <div style={{ padding: "0 20px", marginBottom: 32 }}>
-        <h1 style={{ color: "#e6eef8", margin: 0, fontSize: 18 }}>Admin</h1>
+        <h1 style={{ color: "#e6eef8", margin: 0, fontSize: 18 }}>Администрирование</h1>
       </div>
 
       <nav style={{ flex: 1 }}>
@@ -68,7 +68,7 @@ function Sidebar({ onLogout }) {
             cursor: "pointer",
           }}
         >
-          Sign out
+          Выйти
         </button>
       </div>
     </div>

@@ -82,23 +82,23 @@ function App() {
     const viewers = users.filter((user) => String(user.role || "").toLowerCase() === "viewer").length;
 
     return [
-      { label: "Total Users", value: totalUsers, accent: "#60a5fa" },
-      { label: "Administrators", value: administrators, accent: "#f59e0b" },
-      { label: "Editors", value: editors, accent: "#34d399" },
-      { label: "Viewers", value: viewers, accent: "#c084fc" },
+      { label: "Всего пользователей", value: totalUsers, accent: "#60a5fa" },
+      { label: "Администраторы", value: administrators, accent: "#f59e0b" },
+      { label: "Редакторы", value: editors, accent: "#34d399" },
+      { label: "Наблюдатели", value: viewers, accent: "#c084fc" },
     ];
   }, [users]);
 
   const pageTitle =
     location.pathname === "/users"
-      ? "Users"
+      ? "Пользователи"
       : location.pathname === "/restaurants"
-        ? "Restaurants"
+        ? "Рестораны"
         : location.pathname === "/employees"
-          ? "Employees"
+          ? "Сотрудники"
           : location.pathname === "/settings"
-            ? "Settings"
-            : "Dashboard";
+            ? "Настройки"
+            : "Обзор";
 
   const loadUsers = async () => {
     setUsersLoading(true);
@@ -108,7 +108,7 @@ function App() {
       const fetchedUsers = await getUsers();
       setUsers(fetchedUsers);
     } catch (err) {
-      setUsersError(err.message || "Failed to fetch users");
+      setUsersError(err.message || "Не удалось загрузить пользователей");
     } finally {
       setUsersLoading(false);
     }
@@ -122,7 +122,7 @@ function App() {
       const fetchedRestaurants = await getRestaurants();
       setRestaurants(fetchedRestaurants);
     } catch (err) {
-      setRestaurantsError(err.message || "Failed to fetch restaurants");
+      setRestaurantsError(err.message || "Не удалось загрузить рестораны");
     } finally {
       setRestaurantsLoading(false);
     }
@@ -136,7 +136,7 @@ function App() {
       const fetchedEmployees = await getEmployees();
       setEmployees(fetchedEmployees);
     } catch (err) {
-      setEmployeesError(err.message || "Failed to fetch employees");
+      setEmployeesError(err.message || "Не удалось загрузить сотрудников");
     } finally {
       setEmployeesLoading(false);
     }
@@ -152,7 +152,7 @@ function App() {
       setLoggedIn(true);
       navigate("/");
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(err.message || "Не удалось войти");
     } finally {
       setLoading(false);
     }
@@ -187,7 +187,7 @@ function App() {
 
     try {
       await createUser(createUserForm);
-      setCreateUserSuccess("User created successfully.");
+      setCreateUserSuccess("Пользователь успешно создан.");
       setCreateUserForm({
         username: "",
         email: "",
@@ -196,7 +196,7 @@ function App() {
       });
       await loadUsers();
     } catch (err) {
-      setCreateUserError(err.message || "Failed to create user");
+      setCreateUserError(err.message || "Не удалось создать пользователя");
     } finally {
       setCreateUserLoading(false);
     }
@@ -210,7 +210,7 @@ function App() {
 
     try {
       await createRestaurant(createRestaurantForm);
-      setCreateRestaurantSuccess("Restaurant created successfully.");
+      setCreateRestaurantSuccess("Ресторан успешно создан.");
       setCreateRestaurantForm({
         name: "",
         city: "",
@@ -218,7 +218,7 @@ function App() {
       });
       await loadRestaurants();
     } catch (err) {
-      setCreateRestaurantError(err.message || "Failed to create restaurant");
+      setCreateRestaurantError(err.message || "Не удалось создать ресторан");
     } finally {
       setCreateRestaurantLoading(false);
     }
@@ -226,7 +226,7 @@ function App() {
 
   const handleDeleteUser = async (user) => {
     if (user.username === username) {
-      setDeleteUserError("You cannot delete the currently logged in superadmin user.");
+      setDeleteUserError("Нельзя удалить пользователя, под которым выполнен вход.");
       return;
     }
 
@@ -237,7 +237,7 @@ function App() {
       await deleteUser(user.id);
       await loadUsers();
     } catch (err) {
-      setDeleteUserError(err.message || "Failed to delete user");
+      setDeleteUserError(err.message || "Не удалось удалить пользователя");
     } finally {
       setDeleteUserLoading(null);
     }
@@ -266,7 +266,7 @@ function App() {
       await deleteRestaurant(restaurant.id);
       await loadRestaurants();
     } catch (err) {
-      setDeleteRestaurantError(err.message || "Failed to delete restaurant");
+      setDeleteRestaurantError(err.message || "Не удалось удалить ресторан");
     } finally {
       setDeleteRestaurantLoading(null);
     }
@@ -280,7 +280,7 @@ function App() {
 
     try {
       await createEmployee(createEmployeeForm);
-      setCreateEmployeeSuccess("Employee created successfully.");
+      setCreateEmployeeSuccess("Сотрудник успешно создан.");
       setCreateEmployeeForm({
         firstName: "",
         lastName: "",
@@ -291,7 +291,7 @@ function App() {
       });
       await loadEmployees();
     } catch (err) {
-      setCreateEmployeeError(err.message || "Failed to create employee");
+      setCreateEmployeeError(err.message || "Не удалось создать сотрудника");
     } finally {
       setCreateEmployeeLoading(false);
     }
@@ -305,7 +305,7 @@ function App() {
       await deleteEmployee(employee.id);
       await loadEmployees();
     } catch (err) {
-      setDeleteEmployeeError(err.message || "Failed to delete employee");
+      setDeleteEmployeeError(err.message || "Не удалось удалить сотрудника");
     } finally {
       setDeleteEmployeeLoading(null);
     }
@@ -340,7 +340,7 @@ function App() {
       closeEditUser();
       await loadUsers();
     } catch (err) {
-      setEditUserError(err.message || "Failed to update user");
+      setEditUserError(err.message || "Не удалось изменить пользователя");
     } finally {
       setEditUserLoading(false);
     }
@@ -454,7 +454,7 @@ function App() {
           </div>
 
           <div style={{ color: "#9ca3af", fontSize: 14 }}>
-            Welcome, <span style={{ color: "#e6eef8", fontWeight: 600 }}>{username}</span>
+            Добро пожаловать, <span style={{ color: "#e6eef8", fontWeight: 600 }}>{username}</span>
           </div>
         </header>
 

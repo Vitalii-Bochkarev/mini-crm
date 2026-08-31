@@ -7,24 +7,24 @@ public sealed class AdminUserCreateRequest
     private string _email = string.Empty;
     private string _role = string.Empty;
 
-    [Required]
-    [StringLength(50, MinimumLength = 3)]
+    [Required(ErrorMessage = "Имя пользователя обязательно.")]
+    [StringLength(50, MinimumLength = 3, ErrorMessage = "Имя пользователя должно содержать от 3 до 50 символов.")]
     public string Username
     {
         get => _username;
         init => _username = RequestText.Normalize(value);
     }
 
-    [Required]
-    [EmailAddress]
-    [MaxLength(254)]
+    [Required(ErrorMessage = "Электронная почта обязательна.")]
+    [EmailAddress(ErrorMessage = "Укажите корректный адрес электронной почты.")]
+    [MaxLength(254, ErrorMessage = "Электронная почта должна содержать не более 254 символов.")]
     public string Email
     {
         get => _email;
         init => _email = RequestText.Normalize(value);
     }
 
-    [Required]
+    [Required(ErrorMessage = "Роль обязательна.")]
     [AllowedRole]
     public string Role
     {
@@ -32,8 +32,8 @@ public sealed class AdminUserCreateRequest
         init => _role = RequestText.Normalize(value);
     }
 
-    [Required]
-    [StringLength(100, MinimumLength = 8)]
+    [Required(ErrorMessage = "Пароль обязателен.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Пароль должен содержать от 8 до 100 символов.")]
     public string Password { get; init; } = string.Empty;
 }
 
@@ -43,17 +43,17 @@ public sealed class AdminUserUpdateRequest
     private string _email = string.Empty;
     private string _role = string.Empty;
 
-    [Required]
-    [StringLength(50, MinimumLength = 3)]
+    [Required(ErrorMessage = "Имя пользователя обязательно.")]
+    [StringLength(50, MinimumLength = 3, ErrorMessage = "Имя пользователя должно содержать от 3 до 50 символов.")]
     public string Username
     {
         get => _username;
         init => _username = RequestText.Normalize(value);
     }
 
-    [Required]
-    [EmailAddress]
-    [MaxLength(254)]
+    [Required(ErrorMessage = "Электронная почта обязательна.")]
+    [EmailAddress(ErrorMessage = "Укажите корректный адрес электронной почты.")]
+    [MaxLength(254, ErrorMessage = "Электронная почта должна содержать не более 254 символов.")]
     public string Email
     {
         get => _email;
@@ -62,7 +62,7 @@ public sealed class AdminUserUpdateRequest
 
     public bool IsActive { get; init; }
 
-    [Required]
+    [Required(ErrorMessage = "Роль обязательна.")]
     [AllowedRole]
     public string Role
     {
@@ -78,14 +78,14 @@ public sealed class AdminUserLoginRequest
 {
     private string _username = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Имя пользователя обязательно.")]
     public string Username
     {
         get => _username;
         init => _username = RequestText.Normalize(value);
     }
 
-    [Required]
+    [Required(ErrorMessage = "Пароль обязателен.")]
     public string Password { get; init; } = string.Empty;
 }
 

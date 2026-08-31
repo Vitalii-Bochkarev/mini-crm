@@ -1,4 +1,5 @@
 import React from "react";
+import { formatDate } from "../utils/formatters";
 
 function UsersTable({
   users,
@@ -42,7 +43,7 @@ function UsersTable({
             />
           </circle>
         </svg>
-        Loading users...
+        Загрузка пользователей...
       </div>
     );
   }
@@ -50,7 +51,7 @@ function UsersTable({
   if (error) {
     return (
       <div style={{ color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-        Error: {error}
+        Ошибка: {error}
       </div>
     );
   }
@@ -62,10 +63,10 @@ function UsersTable({
       <div>
         {showDeleteError && (
           <div style={{ marginBottom: 16, color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-            Error: {deleteUserError}
+            Ошибка: {deleteUserError}
           </div>
         )}
-        <div style={{ color: "#9ca3af", padding: 12 }}>No users found.</div>
+        <div style={{ color: "#9ca3af", padding: 12 }}>Пользователи не найдены.</div>
       </div>
     );
   }
@@ -74,7 +75,7 @@ function UsersTable({
     <div>
       {showDeleteError && (
         <div style={{ marginBottom: 16, color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-          Error: {deleteUserError}
+          Ошибка: {deleteUserError}
         </div>
       )}
 
@@ -92,16 +93,16 @@ function UsersTable({
                 ID
               </th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>
-                Username
+                Имя пользователя
               </th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>
-                Email
+                Электронная почта
               </th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>
-                Created
+                Создан
               </th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>
-                Actions
+                Действия
               </th>
             </tr>
           </thead>
@@ -116,7 +117,7 @@ function UsersTable({
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{user.username}</td>
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{user.email || "—"}</td>
                   <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>
-                    {user.created ? new Date(user.created).toLocaleDateString() : "—"}
+                    {formatDate(user.created)}
                   </td>
                   <td style={{ padding: "12px 16px" }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -133,7 +134,7 @@ function UsersTable({
                           cursor: "pointer",
                         }}
                       >
-                        Edit
+                        Изменить
                       </button>
                       <button
                         type="button"
@@ -150,7 +151,7 @@ function UsersTable({
                           opacity: isCurrentUser || isDeleting ? 0.75 : 1,
                         }}
                       >
-                        {isDeleting ? "Deleting..." : isCurrentUser ? "Protected" : "Delete"}
+                        {isDeleting ? "Удаление..." : isCurrentUser ? "Защищён" : "Удалить"}
                       </button>
                     </div>
                   </td>

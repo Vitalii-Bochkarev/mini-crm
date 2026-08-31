@@ -1,4 +1,5 @@
 import React from "react";
+import { ROLE_OPTIONS } from "../utils/formatters";
 
 function CreateUserForm({
   formData,
@@ -20,9 +21,9 @@ function CreateUserForm({
       }}
     >
       <div style={{ marginBottom: 20 }}>
-        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Create User</h3>
+        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Создание пользователя</h3>
         <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
-          Add a new admin user with the required access level
+          Добавьте нового пользователя с необходимым уровнем доступа.
         </p>
       </div>
 
@@ -48,12 +49,12 @@ function CreateUserForm({
         >
           <div>
             <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
-              Username
+              Имя пользователя
             </label>
             <input
               value={formData.username}
               onChange={(e) => onFieldChange("username", e.target.value)}
-              placeholder="Enter username"
+              placeholder="Введите имя пользователя"
               required
               style={{
                 width: "100%",
@@ -71,13 +72,13 @@ function CreateUserForm({
 
           <div>
             <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
-              Email
+              Электронная почта
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => onFieldChange("email", e.target.value)}
-              placeholder="Enter email"
+              placeholder="Введите электронную почту"
               required
               style={{
                 width: "100%",
@@ -95,13 +96,13 @@ function CreateUserForm({
 
           <div>
             <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
-              Password
+              Пароль
             </label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => onFieldChange("password", e.target.value)}
-              placeholder="Enter password"
+              placeholder="Введите пароль"
               required
               style={{
                 width: "100%",
@@ -119,7 +120,7 @@ function CreateUserForm({
 
           <div>
             <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
-              Role
+              Роль
             </label>
             <select
               value={formData.role}
@@ -136,9 +137,11 @@ function CreateUserForm({
                 boxSizing: "border-box",
               }}
             >
-              <option>Administrator</option>
-              <option>Editor</option>
-              <option>Viewer</option>
+              {ROLE_OPTIONS.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -158,7 +161,7 @@ function CreateUserForm({
               cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Creating user..." : "Create user"}
+            {loading ? "Создание пользователя..." : "Создать пользователя"}
           </button>
         </div>
       </form>

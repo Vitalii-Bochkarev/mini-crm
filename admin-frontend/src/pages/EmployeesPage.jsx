@@ -39,9 +39,9 @@ function EmployeesPage({
         }}
       >
         <div style={{ marginBottom: 20 }}>
-          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Employees</h3>
+          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Сотрудники</h3>
           <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
-            Manage employees and their assignments across restaurants.
+            Управляйте сотрудниками и их распределением по ресторанам.
           </p>
         </div>
 

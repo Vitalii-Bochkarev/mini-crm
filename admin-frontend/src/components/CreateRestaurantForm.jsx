@@ -12,9 +12,9 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
       }}
     >
       <div style={{ marginBottom: 20 }}>
-        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Add Restaurant</h3>
+        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Добавление ресторана</h3>
         <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
-          Add a new restaurant to the CRM.
+          Добавьте новый ресторан в CRM.
         </p>
       </div>
 
@@ -49,7 +49,7 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 16 }}>
         <div>
           <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
-            Restaurant Name
+            Название ресторана
           </label>
           <input
             type="text"
@@ -69,7 +69,7 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
 
         <div>
           <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
-            City
+            Город
           </label>
           <input
             type="text"
@@ -95,7 +95,7 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
               onChange={(e) => onFieldChange("isActive", e.target.checked)}
               style={{ marginRight: 10 }}
             />
-            Active
+            Активен
           </label>
         </div>
 
@@ -113,7 +113,7 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
             opacity: loading ? 0.75 : 1,
           }}
         >
-          {loading ? "Creating..." : "Add Restaurant"}
+          {loading ? "Добавление..." : "Добавить ресторан"}
         </button>
       </form>
     </div>

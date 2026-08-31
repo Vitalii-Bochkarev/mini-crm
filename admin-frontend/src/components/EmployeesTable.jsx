@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency } from "../utils/formatters";
 
 function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoadingId, deleteError }) {
   if (loading) {
@@ -33,7 +34,7 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
             />
           </circle>
         </svg>
-        Loading employees...
+        Загрузка сотрудников...
       </div>
     );
   }
@@ -41,7 +42,7 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
   if (error) {
     return (
       <div style={{ color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-        Error: {error}
+        Ошибка: {error}
       </div>
     );
   }
@@ -53,10 +54,10 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
       <div>
         {showDeleteError && (
           <div style={{ marginBottom: 16, color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-            Error: {deleteError}
+            Ошибка: {deleteError}
           </div>
         )}
-        <div style={{ color: "#9ca3af", padding: 12 }}>No employees found.</div>
+        <div style={{ color: "#9ca3af", padding: 12 }}>Сотрудники не найдены.</div>
       </div>
     );
   }
@@ -65,7 +66,7 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
     <div>
       {showDeleteError && (
         <div style={{ marginBottom: 16, color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-          Error: {deleteError}
+          Ошибка: {deleteError}
         </div>
       )}
 
@@ -73,13 +74,13 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>First Name</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Last Name</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Position</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Salary</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Restaurant</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Active</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Actions</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Имя</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Фамилия</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Должность</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Зарплата</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Ресторан</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Активен</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -92,11 +93,11 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{employee.lastName}</td>
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{employee.position}</td>
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>
-                    ${employee.salary ? parseFloat(employee.salary).toFixed(2) : "0.00"}
+                    {formatCurrency(employee.salary)}
                   </td>
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{employee.restaurantName}</td>
                   <td style={{ padding: "12px 16px", color: employee.isActive ? "#34d399" : "#fca5a5" }}>
-                    {employee.isActive ? "Yes" : "No"}
+                    {employee.isActive ? "Да" : "Нет"}
                   </td>
                   <td style={{ padding: "12px 16px" }}>
                     <button
@@ -114,7 +115,7 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
                         opacity: isDeleting ? 0.75 : 1,
                       }}
                     >
-                      {isDeleting ? "Deleting..." : "Delete"}
+                      {isDeleting ? "Удаление..." : "Удалить"}
                     </button>
                   </td>
                 </tr>

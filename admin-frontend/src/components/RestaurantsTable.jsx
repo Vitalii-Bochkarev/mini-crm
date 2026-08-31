@@ -1,4 +1,5 @@
 import React from "react";
+import { formatDate } from "../utils/formatters";
 
 function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, deleteLoadingId, deleteError }) {
   if (loading) {
@@ -33,7 +34,7 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
             />
           </circle>
         </svg>
-        Loading restaurants...
+        Загрузка ресторанов...
       </div>
     );
   }
@@ -41,7 +42,7 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
   if (error) {
     return (
       <div style={{ color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-        Error: {error}
+        Ошибка: {error}
       </div>
     );
   }
@@ -53,10 +54,10 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
       <div>
         {showDeleteError && (
           <div style={{ marginBottom: 16, color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-            Error: {deleteError}
+            Ошибка: {deleteError}
           </div>
         )}
-        <div style={{ color: "#9ca3af", padding: 12 }}>No restaurants found.</div>
+        <div style={{ color: "#9ca3af", padding: 12 }}>Рестораны не найдены.</div>
       </div>
     );
   }
@@ -65,7 +66,7 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
     <div>
       {showDeleteError && (
         <div style={{ marginBottom: 16, color: "#fecaca", padding: 12, backgroundColor: "rgba(220, 38, 38, 0.1)", borderRadius: 8 }}>
-          Error: {deleteError}
+          Ошибка: {deleteError}
         </div>
       )}
 
@@ -74,11 +75,11 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>ID</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Name</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>City</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Active</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Created</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Actions</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Название</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Город</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Активен</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Создан</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -91,10 +92,10 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{restaurant.name}</td>
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{restaurant.city}</td>
                   <td style={{ padding: "12px 16px", color: restaurant.isActive ? "#34d399" : "#fca5a5" }}>
-                    {restaurant.isActive ? "Yes" : "No"}
+                    {restaurant.isActive ? "Да" : "Нет"}
                   </td>
                   <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>
-                    {restaurant.createdAt ? new Date(restaurant.createdAt).toLocaleDateString() : "—"}
+                    {formatDate(restaurant.createdAt)}
                   </td>
                   <td style={{ padding: "12px 16px" }}>
                     <button
@@ -112,7 +113,7 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
                         opacity: isDeleting ? 0.75 : 1,
                       }}
                     >
-                      {isDeleting ? "Deleting..." : "Delete"}
+                      {isDeleting ? "Удаление..." : "Удалить"}
                     </button>
                   </td>
                 </tr>

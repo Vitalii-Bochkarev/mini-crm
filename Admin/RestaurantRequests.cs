@@ -7,16 +7,16 @@ public sealed class RestaurantCreateRequest
     private string _name = string.Empty;
     private string _city = string.Empty;
 
-    [Required]
-    [StringLength(100, MinimumLength = 2)]
+    [Required(ErrorMessage = "Название ресторана обязательно.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Название ресторана должно содержать от 2 до 100 символов.")]
     public string Name
     {
         get => _name;
         init => _name = RequestText.Normalize(value);
     }
 
-    [Required]
-    [StringLength(100, MinimumLength = 2)]
+    [Required(ErrorMessage = "Город обязателен.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Название города должно содержать от 2 до 100 символов.")]
     public string City
     {
         get => _city;
@@ -31,16 +31,16 @@ public sealed class RestaurantUpdateRequest
     private string _name = string.Empty;
     private string _city = string.Empty;
 
-    [Required]
-    [StringLength(100, MinimumLength = 2)]
+    [Required(ErrorMessage = "Название ресторана обязательно.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Название ресторана должно содержать от 2 до 100 символов.")]
     public string Name
     {
         get => _name;
         init => _name = RequestText.Normalize(value);
     }
 
-    [Required]
-    [StringLength(100, MinimumLength = 2)]
+    [Required(ErrorMessage = "Город обязателен.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Название города должно содержать от 2 до 100 символов.")]
     public string City
     {
         get => _city;

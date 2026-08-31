@@ -18,7 +18,7 @@ public sealed class AllowedRoleAttribute : ValidationAttribute
     };
 
     public AllowedRoleAttribute()
-        : base("The {0} field must be one of: Administrator, Editor, Viewer.")
+        : base("Недопустимая роль. Допустимые значения: Administrator, Editor, Viewer.")
     {
     }
 
@@ -32,7 +32,7 @@ public sealed class DecimalScaleAttribute : ValidationAttribute
     private readonly int _maximumScale;
 
     public DecimalScaleAttribute(int maximumScale)
-        : base("The {0} field must have no more than {1} digits after the decimal point.")
+        : base("Числовое значение должно содержать не более {1} знаков после запятой.")
     {
         _maximumScale = maximumScale;
     }
@@ -61,7 +61,7 @@ public sealed class DecimalScaleAttribute : ValidationAttribute
 public sealed class NotEmptyGuidAttribute : ValidationAttribute
 {
     public NotEmptyGuidAttribute()
-        : base("The {0} field must not be an empty GUID.")
+        : base("Идентификатор ресторана не должен содержать пустой GUID.")
     {
     }
 
@@ -76,7 +76,7 @@ public sealed class OptionalPasswordLengthAttribute : ValidationAttribute
     private readonly int _maximumLength;
 
     public OptionalPasswordLengthAttribute(int minimumLength, int maximumLength)
-        : base("The {0} field must be between {1} and {2} characters long when provided.")
+        : base("Если пароль указан, его длина должна составлять от {1} до {2} символов.")
     {
         _minimumLength = minimumLength;
         _maximumLength = maximumLength;
