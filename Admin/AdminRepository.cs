@@ -28,6 +28,22 @@ public sealed class AdminRepository
             .SingleOrDefault(user => user.Username == username.Trim());
     }
 
+    public bool UsernameExists(string username, Guid? excludedUserId = null)
+    {
+        var normalizedUsername = username.Trim();
+        return _dbContext.AdminUsers.Any(user =>
+            user.Username == normalizedUsername &&
+            (!excludedUserId.HasValue || user.Id != excludedUserId.Value));
+    }
+
+    public bool EmailExists(string email, Guid? excludedUserId = null)
+    {
+        var normalizedEmail = email.Trim();
+        return _dbContext.AdminUsers.Any(user =>
+            user.Email == normalizedEmail &&
+            (!excludedUserId.HasValue || user.Id != excludedUserId.Value));
+    }
+
     public MyProject2.Admin.PagedResult<Restaurant> GetAllRestaurants(
         string? search = null,
         int page = 1,
@@ -120,6 +136,11 @@ public sealed class AdminRepository
         _dbContext.Restaurants.Remove(restaurant);
         _dbContext.SaveChanges();
         return true;
+    }
+
+    public bool RestaurantHasEmployees(Guid restaurantId)
+    {
+        return _dbContext.Employees.Any(employee => employee.RestaurantId == restaurantId);
     }
 
     public PagedResult<Employee> GetAllEmployees(

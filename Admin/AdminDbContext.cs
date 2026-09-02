@@ -15,15 +15,23 @@ public sealed class AdminDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("citext");
+
         modelBuilder.Entity<AdminUser>(builder =>
         {
             builder.HasKey(user => user.Id);
-            builder.Property(user => user.Username).IsRequired();
-            builder.Property(user => user.Email).IsRequired();
+            builder.Property(user => user.Username).HasColumnType("citext").IsRequired();
+            builder.Property(user => user.Email).HasColumnType("citext").IsRequired();
             builder.Property(user => user.Role).IsRequired();
             builder.Property(user => user.IsActive).HasDefaultValue(true);
             builder.Property(user => user.PasswordHash).IsRequired();
             builder.Property(user => user.PasswordSalt).IsRequired();
+            builder.HasIndex(user => user.Username)
+                .IsUnique()
+                .HasDatabaseName("IX_AdminUsers_Username");
+            builder.HasIndex(user => user.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_AdminUsers_Email");
         });
 
         modelBuilder.Entity<Restaurant>(builder =>
@@ -38,7 +46,7 @@ public sealed class AdminDbContext : DbContext
             builder.HasMany(r => r.Employees)
                 .WithOne(e => e.Restaurant)
                 .HasForeignKey(e => e.RestaurantId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Employee>(builder =>
@@ -55,7 +63,7 @@ public sealed class AdminDbContext : DbContext
             builder.HasOne(e => e.Restaurant)
                 .WithMany(r => r.Employees)
                 .HasForeignKey(e => e.RestaurantId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         base.OnModelCreating(modelBuilder);

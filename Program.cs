@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MyProject2.Admin;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,7 +95,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
-    dbContext.Database.EnsureCreated();
+    dbContext.Database.Migrate();
 
     if (!dbContext.AdminUsers.Any())
     {
@@ -406,11 +407,39 @@ static IResult CreateUser(AdminUserCreateRequest request, AdminRepository reposi
         return Results.ValidationProblem(validationErrors);
     }
 
-    var user = repository.Create(
-        request.Username,
-        request.Email,
-        request.Role,
-        request.Password);
+    if (repository.UsernameExists(request.Username))
+    {
+        return UserUsernameConflict();
+    }
+
+    if (repository.EmailExists(request.Email))
+    {
+        return UserEmailConflict();
+    }
+
+    AdminUser user;
+    try
+    {
+        user = repository.Create(
+            request.Username,
+            request.Email,
+            request.Role,
+            request.Password);
+    }
+    catch (DbUpdateException exception) when (IsConstraintViolation(
+        exception,
+        PostgresErrorCodes.UniqueViolation,
+        "IX_AdminUsers_Username"))
+    {
+        return UserUsernameConflict();
+    }
+    catch (DbUpdateException exception) when (IsConstraintViolation(
+        exception,
+        PostgresErrorCodes.UniqueViolation,
+        "IX_AdminUsers_Email"))
+    {
+        return UserEmailConflict();
+    }
 
     return Results.Created($"/admin/users/{user.Id}", ToAdminUserResponse(user));
 }
@@ -424,13 +453,46 @@ static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminReposito
         return Results.ValidationProblem(validationErrors);
     }
 
-    var updated = repository.Update(
-        id,
-        request.Username,
-        request.Email,
-        request.IsActive,
-        string.IsNullOrWhiteSpace(request.Role) ? "Viewer" : request.Role,
-        request.Password);
+    if (repository.Get(id) is null)
+    {
+        return Results.NotFound(new { error = "Пользователь не найден." });
+    }
+
+    if (repository.UsernameExists(request.Username, id))
+    {
+        return UserUsernameConflict();
+    }
+
+    if (repository.EmailExists(request.Email, id))
+    {
+        return UserEmailConflict();
+    }
+
+    bool updated;
+    try
+    {
+        updated = repository.Update(
+            id,
+            request.Username,
+            request.Email,
+            request.IsActive,
+            string.IsNullOrWhiteSpace(request.Role) ? "Viewer" : request.Role,
+            request.Password);
+    }
+    catch (DbUpdateException exception) when (IsConstraintViolation(
+        exception,
+        PostgresErrorCodes.UniqueViolation,
+        "IX_AdminUsers_Username"))
+    {
+        return UserUsernameConflict();
+    }
+    catch (DbUpdateException exception) when (IsConstraintViolation(
+        exception,
+        PostgresErrorCodes.UniqueViolation,
+        "IX_AdminUsers_Email"))
+    {
+        return UserEmailConflict();
+    }
 
     return updated
         ? Results.NoContent()
@@ -519,10 +581,57 @@ static IResult UpdateRestaurant(Guid id, RestaurantUpdateRequest request, AdminR
 
 static IResult DeleteRestaurant(Guid id, AdminRepository repository)
 {
-    var deleted = repository.DeleteRestaurant(id);
+    if (repository.GetRestaurant(id) is null)
+    {
+        return Results.NotFound(new { error = "Ресторан не найден." });
+    }
+
+    if (repository.RestaurantHasEmployees(id))
+    {
+        return RestaurantHasEmployeesConflict();
+    }
+
+    bool deleted;
+    try
+    {
+        deleted = repository.DeleteRestaurant(id);
+    }
+    catch (DbUpdateException exception) when (IsConstraintViolation(
+        exception,
+        PostgresErrorCodes.ForeignKeyViolation,
+        "FK_Employees_Restaurants_RestaurantId"))
+    {
+        return RestaurantHasEmployeesConflict();
+    }
+
     return deleted
         ? Results.NoContent()
         : Results.NotFound(new { error = "Ресторан не найден." });
+}
+
+static IResult UserUsernameConflict()
+{
+    return Results.Conflict(new { error = "Пользователь с таким именем уже существует." });
+}
+
+static IResult UserEmailConflict()
+{
+    return Results.Conflict(new { error = "Пользователь с такой электронной почтой уже существует." });
+}
+
+static IResult RestaurantHasEmployeesConflict()
+{
+    return Results.Conflict(new { error = "Нельзя удалить ресторан, в котором есть сотрудники." });
+}
+
+static bool IsConstraintViolation(
+    DbUpdateException exception,
+    string sqlState,
+    string constraintName)
+{
+    return exception.InnerException is PostgresException postgresException &&
+           postgresException.SqlState == sqlState &&
+           postgresException.ConstraintName == constraintName;
 }
 
 static Dictionary<string, string[]>? GetValidationErrors<T>(T request)
