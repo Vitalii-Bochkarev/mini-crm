@@ -15,10 +15,10 @@ function LoginForm({ username, password, loading, error, onUsernameChange, onPas
       }}
     >
       <h2 style={{ color: "#e6eef8", margin: 0, marginBottom: 8, fontSize: 28 }}>
-        Панель администратора
+        Mini CRM
       </h2>
       <p style={{ color: "#9ca3af", margin: "0 0 24px 0", fontSize: 14 }}>
-        Войдите в свою учётную запись
+        Система управления ресторанами
       </p>
 
       <label style={{ color: "#9ca3af", fontSize: 13 }}>Имя пользователя</label>

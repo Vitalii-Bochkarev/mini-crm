@@ -23,7 +23,7 @@ function Sidebar({ onLogout }) {
       }}
     >
       <div style={{ padding: "0 20px", marginBottom: 32 }}>
-        <h1 style={{ color: "#e6eef8", margin: 0, fontSize: 18 }}>Администрирование</h1>
+        <h1 style={{ color: "#e6eef8", margin: 0, fontSize: 18 }}>Mini CRM</h1>
       </div>
 
       <nav style={{ flex: 1 }}>
