@@ -67,6 +67,7 @@ builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.IncludeErrorDetails = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -77,6 +78,43 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
             ClockSkew = TimeSpan.FromMinutes(2)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = context =>
+            {
+                context.HandleResponse();
+
+                if (context.Response.HasStarted)
+                {
+                    return Task.CompletedTask;
+                }
+
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                context.Response.Headers.WWWAuthenticate = "Bearer";
+
+                return context.Response.WriteAsJsonAsync(new
+                {
+                    error = "Требуется действительный токен авторизации."
+                });
+            },
+            OnForbidden = context =>
+            {
+                if (context.Response.HasStarted)
+                {
+                    return Task.CompletedTask;
+                }
+
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/json";
+
+                return context.Response.WriteAsJsonAsync(new
+                {
+                    error = "Недостаточно прав для выполнения операции."
+                });
+            }
         };
     });
 
@@ -89,6 +127,8 @@ builder.Services.AddDbContext<AdminDbContext>(options =>
 
 // Services
 builder.Services.AddScoped<AdminRepository>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
@@ -124,11 +164,33 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+app.UseExceptionHandler();
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors("AllowFrontend");
 
 app.UseHttpsRedirection();
+app.UseStatusCodePages(async context =>
+{
+    var response = context.HttpContext.Response;
+
+    switch (response.StatusCode)
+    {
+        case StatusCodes.Status404NotFound:
+            response.ContentType = "application/json";
+            await response.WriteAsJsonAsync(
+                new { error = "Запрашиваемый ресурс не найден." },
+                context.HttpContext.RequestAborted);
+            break;
+
+        case StatusCodes.Status405MethodNotAllowed:
+            response.ContentType = "application/json";
+            await response.WriteAsJsonAsync(
+                new { error = "HTTP-метод не поддерживается." },
+                context.HttpContext.RequestAborted);
+            break;
+    }
+});
 app.UseAuthentication();
 app.UseAuthorization();
 
