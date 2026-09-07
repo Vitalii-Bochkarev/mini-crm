@@ -16,18 +16,21 @@ function EmployeesPage({
   deleteEmployeeLoadingId,
   deleteEmployeeError,
   restaurants,
+  permissions,
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <CreateEmployeeForm
-        formData={createEmployeeForm}
-        onFieldChange={onCreateEmployeeFieldChange}
-        onSubmit={onCreateEmployee}
-        loading={createEmployeeLoading}
-        error={createEmployeeError}
-        success={createEmployeeSuccess}
-        restaurants={restaurants}
-      />
+      {permissions.canCreate && (
+        <CreateEmployeeForm
+          formData={createEmployeeForm}
+          onFieldChange={onCreateEmployeeFieldChange}
+          onSubmit={onCreateEmployee}
+          loading={createEmployeeLoading}
+          error={createEmployeeError}
+          success={createEmployeeSuccess}
+          restaurants={restaurants}
+        />
+      )}
 
       <div
         style={{
@@ -52,6 +55,7 @@ function EmployeesPage({
           onDeleteEmployee={onDeleteEmployee}
           deleteLoadingId={deleteEmployeeLoadingId}
           deleteError={deleteEmployeeError}
+          canDelete={permissions.canDelete}
         />
       </div>
     </div>

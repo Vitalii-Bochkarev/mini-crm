@@ -15,17 +15,20 @@ function RestaurantsPage({
   onDeleteRestaurant,
   deleteRestaurantLoadingId,
   deleteRestaurantError,
+  permissions,
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <CreateRestaurantForm
-        formData={createRestaurantForm}
-        onFieldChange={onCreateRestaurantFieldChange}
-        onSubmit={onCreateRestaurant}
-        loading={createRestaurantLoading}
-        error={createRestaurantError}
-        success={createRestaurantSuccess}
-      />
+      {permissions.canCreate && (
+        <CreateRestaurantForm
+          formData={createRestaurantForm}
+          onFieldChange={onCreateRestaurantFieldChange}
+          onSubmit={onCreateRestaurant}
+          loading={createRestaurantLoading}
+          error={createRestaurantError}
+          success={createRestaurantSuccess}
+        />
+      )}
 
       <div
         style={{
@@ -50,6 +53,7 @@ function RestaurantsPage({
           onDeleteRestaurant={onDeleteRestaurant}
           deleteLoadingId={deleteRestaurantLoadingId}
           deleteError={deleteRestaurantError}
+          canDelete={permissions.canDelete}
         />
       </div>
     </div>

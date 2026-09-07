@@ -1,4 +1,101 @@
+import { ROLES } from "../utils/formatters";
+
 const API_URL = "http://localhost:5269";
+const TOKEN_STORAGE_KEY = "token";
+const USER_STORAGE_KEY = "user";
+const VALID_ROLES = new Set(Object.values(ROLES));
+
+let unauthorizedHandler = null;
+let unauthorizedHandled = false;
+
+export class ApiError extends Error {
+  constructor(message, status = 0, validationErrors = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.validationErrors = validationErrors;
+  }
+}
+
+function isStoredUserValid(user) {
+  return Boolean(
+    user &&
+      typeof user === "object" &&
+      typeof user.id === "string" && user.id.trim() &&
+      typeof user.username === "string" && user.username.trim() &&
+      typeof user.email === "string" && user.email.trim() &&
+      typeof user.isActive === "boolean" &&
+      typeof user.role === "string" && user.role.trim() &&
+      VALID_ROLES.has(user.role),
+  );
+}
+
+function isTokenValid(token) {
+  return typeof token === "string" && Boolean(token.trim());
+}
+
+export function saveSession(session) {
+  if (!isTokenValid(session?.token) || !isStoredUserValid(session?.user)) {
+    throw new Error("Сервер вернул некорректные данные сессии.");
+  }
+
+  localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+  unauthorizedHandled = false;
+  return session;
+}
+
+export function clearSession() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(USER_STORAGE_KEY);
+}
+
+export function getSavedSession() {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+
+  if (token === null && storedUser === null) return null;
+
+  if (!isTokenValid(token) || !storedUser) {
+    clearSession();
+    return null;
+  }
+
+  try {
+    const user = JSON.parse(storedUser);
+    if (!isStoredUserValid(user)) {
+      clearSession();
+      return null;
+    }
+
+    return { token, user };
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === "function" ? handler : null;
+
+  return () => {
+    if (unauthorizedHandler === handler) {
+      unauthorizedHandler = null;
+    }
+  };
+}
+
+function notifyUnauthorized(expectedToken = null) {
+  if (unauthorizedHandled) return;
+
+  if (expectedToken && getSavedSession()?.token !== expectedToken) {
+    return;
+  }
+
+  unauthorizedHandled = true;
+  clearSession();
+  unauthorizedHandler?.();
+}
 
 function getValidationMessages(errors) {
   if (!errors || typeof errors !== "object" || Array.isArray(errors)) {
@@ -11,25 +108,47 @@ function getValidationMessages(errors) {
     .map((message) => message.trim());
 }
 
-async function request(url, options = {}) {
+async function request(url, options = {}, requiresAuth = true) {
+  const headers = new Headers(options.headers);
+  let requestToken = null;
+
+  if (requiresAuth) {
+    const session = getSavedSession();
+    if (!session) {
+      notifyUnauthorized();
+      throw new ApiError("Токен авторизации не найден", 401);
+    }
+
+    requestToken = session.token;
+    headers.set("Authorization", `Bearer ${requestToken}`);
+  }
+
   let res;
 
   try {
-    res = await fetch(url, options);
+    res = await fetch(url, { ...options, headers });
   } catch {
-    throw new Error("Не удалось связаться с сервером. Проверьте подключение.");
+    throw new ApiError("Не удалось связаться с сервером. Проверьте подключение.");
   }
 
-  const data = await res.json().catch(() => ({}));
+  const data = res.status === 204 ? null : await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const validationMessages = getValidationMessages(data?.errors);
+    if (requiresAuth && res.status === 401) {
+      notifyUnauthorized(requestToken);
+    }
+
+    const validationErrors =
+      data?.errors && typeof data.errors === "object" && !Array.isArray(data.errors)
+        ? data.errors
+        : null;
+    const validationMessages = getValidationMessages(validationErrors);
     const msg = validationMessages.length > 0
       ? validationMessages.join(" ")
       : data?.error ||
         data?.message ||
         `Не удалось выполнить запрос. Сервер вернул HTTP ${res.status}.`;
-    throw new Error(msg);
+    throw new ApiError(msg, res.status, validationErrors);
   }
 
   return data;
@@ -40,39 +159,28 @@ export async function login(username, password) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
-  });
+  }, false);
 
   const token = data?.token || data?.access_token || data?.jwt || data?.accessToken;
-  if (!token) throw new Error("Сервер не вернул токен");
+  if (!token) throw new ApiError("Сервер не вернул токен");
+  if (!isStoredUserValid(data?.user)) throw new ApiError("Сервер не вернул данные пользователя");
 
-  localStorage.setItem("token", token);
-  return token;
+  return saveSession({ token, user: data.user });
 }
 
 export async function getUsers() {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/admin/users`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return Array.isArray(data) ? data : data?.users || [];
 }
 
 export async function createUser(userData) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/admin/users`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(userData),
   });
@@ -81,29 +189,18 @@ export async function createUser(userData) {
 }
 
 export async function deleteUser(userId) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/admin/users/${userId}`, {
     method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return data;
 }
 
 export async function updateUser(userId, userData) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/admin/users/${userId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(userData),
   });
@@ -112,29 +209,18 @@ export async function updateUser(userId, userData) {
 }
 
 export async function getRestaurants() {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/restaurants`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return Array.isArray(data) ? data : data?.items || [];
 }
 
 export async function createRestaurant(restaurantData) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/restaurants`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(restaurantData),
   });
@@ -143,59 +229,34 @@ export async function createRestaurant(restaurantData) {
 }
 
 export async function deleteRestaurant(restaurantId) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/restaurants/${restaurantId}`, {
     method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return data;
 }
 
 export async function getEmployees() {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/employees`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return Array.isArray(data) ? data : data?.items || [];
 }
 
 export async function getRestaurantEmployees(restaurantId) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/restaurants/${restaurantId}/employees`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return Array.isArray(data) ? data : data?.employees || [];
 }
 
 export async function createEmployee(employeeData) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/employees`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(employeeData),
   });
@@ -204,15 +265,8 @@ export async function createEmployee(employeeData) {
 }
 
 export async function deleteEmployee(employeeId) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Токен авторизации не найден");
-
   const data = await request(`${API_URL}/employees/${employeeId}`, {
     method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return data;

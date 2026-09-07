@@ -1,7 +1,7 @@
 import React from "react";
 import { formatDate } from "../utils/formatters";
 
-function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, deleteLoadingId, deleteError }) {
+function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, deleteLoadingId, deleteError, canDelete }) {
   if (loading) {
     return (
       <div
@@ -79,7 +79,9 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Город</th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Активен</th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Создан</th>
-              <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Действия</th>
+              {canDelete && (
+                <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Действия</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -97,25 +99,27 @@ function RestaurantsTable({ restaurants, loading, error, onDeleteRestaurant, del
                   <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>
                     {formatDate(restaurant.createdAt)}
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <button
-                      type="button"
-                      onClick={() => onDeleteRestaurant(restaurant)}
-                      disabled={isDeleting}
-                      style={{
-                        border: "none",
-                        borderRadius: 8,
-                        padding: "8px 12px",
-                        background: isDeleting ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
-                        color: "#fff",
-                        fontWeight: 700,
-                        cursor: isDeleting ? "not-allowed" : "pointer",
-                        opacity: isDeleting ? 0.75 : 1,
-                      }}
-                    >
-                      {isDeleting ? "Удаление..." : "Удалить"}
-                    </button>
-                  </td>
+                  {canDelete && (
+                    <td style={{ padding: "12px 16px" }}>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteRestaurant(restaurant)}
+                        disabled={isDeleting}
+                        style={{
+                          border: "none",
+                          borderRadius: 8,
+                          padding: "8px 12px",
+                          background: isDeleting ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
+                          color: "#fff",
+                          fontWeight: 700,
+                          cursor: isDeleting ? "not-allowed" : "pointer",
+                          opacity: isDeleting ? 0.75 : 1,
+                        }}
+                      >
+                        {isDeleting ? "Удаление..." : "Удалить"}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}

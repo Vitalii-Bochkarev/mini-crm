@@ -7,7 +7,9 @@ import RestaurantsPage from "./pages/RestaurantsPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
-import { login, getUsers, createUser, deleteUser, updateUser, getRestaurants, createRestaurant, deleteRestaurant, getEmployees, createEmployee, deleteEmployee } from "./services/api";
+import { login, getUsers, createUser, deleteUser, updateUser, getRestaurants, createRestaurant, deleteRestaurant, getEmployees, createEmployee, deleteEmployee, clearSession, getSavedSession, saveSession, setUnauthorizedHandler } from "./services/api";
+import { ROLES } from "./utils/formatters";
+import { getUiPermissions } from "./utils/permissions";
 
 function App() {
   const location = useLocation();
@@ -17,7 +19,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [session, setSession] = useState(() => getSavedSession());
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState(null);
@@ -27,7 +29,9 @@ function App() {
   const [editUserForm, setEditUserForm] = useState({
     username: "",
     email: "",
-    role: "Administrator",
+    isActive: true,
+    role: ROLES.ADMINISTRATOR,
+    password: "",
   });
   const [editUserLoading, setEditUserLoading] = useState(false);
   const [editUserError, setEditUserError] = useState("");
@@ -35,7 +39,7 @@ function App() {
     username: "",
     email: "",
     password: "",
-    role: "Administrator",
+    role: ROLES.ADMINISTRATOR,
   });
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [createUserError, setCreateUserError] = useState(null);
@@ -72,14 +76,21 @@ function App() {
   const [deleteEmployeeLoading, setDeleteEmployeeLoading] = useState(null);
   const [deleteEmployeeError, setDeleteEmployeeError] = useState("");
 
+  const currentUser = session?.user || null;
+  const loggedIn = Boolean(session);
+  const permissions = useMemo(
+    () => getUiPermissions(currentUser?.role),
+    [currentUser?.role],
+  );
+
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const administrators = users.filter((user) => {
       const role = String(user.role || "").toLowerCase();
-      return role === "administrator" || role === "superadmin";
+      return role === ROLES.ADMINISTRATOR.toLowerCase() || role === "superadmin";
     }).length;
-    const editors = users.filter((user) => String(user.role || "").toLowerCase() === "editor").length;
-    const viewers = users.filter((user) => String(user.role || "").toLowerCase() === "viewer").length;
+    const editors = users.filter((user) => String(user.role || "").toLowerCase() === ROLES.EDITOR.toLowerCase()).length;
+    const viewers = users.filter((user) => String(user.role || "").toLowerCase() === ROLES.VIEWER.toLowerCase()).length;
 
     return [
       { label: "Всего пользователей", value: totalUsers, accent: "#60a5fa" },
@@ -148,8 +159,9 @@ function App() {
     setLoading(true);
 
     try {
-      await login(username, password);
-      setLoggedIn(true);
+      const authenticatedSession = await login(username, password);
+      setSession(authenticatedSession);
+      setPassword("");
       navigate("/");
     } catch (err) {
       setError(err.message || "Не удалось войти");
@@ -192,7 +204,7 @@ function App() {
         username: "",
         email: "",
         password: "",
-        role: "Administrator",
+        role: ROLES.ADMINISTRATOR,
       });
       await loadUsers();
     } catch (err) {
@@ -225,7 +237,7 @@ function App() {
   };
 
   const handleDeleteUser = async (user) => {
-    if (user.username === username) {
+    if (user.id === currentUser?.id) {
       setDeleteUserError("Нельзя удалить пользователя, под которым выполнен вход.");
       return;
     }
@@ -249,12 +261,16 @@ function App() {
       id: user.id,
       username: user.username,
       email: user.email || "",
-      role: user.role || "Administrator",
+      isActive: user.isActive,
+      role: user.role || ROLES.ADMINISTRATOR,
+      password: "",
     });
     setEditUserForm({
       username: user.username,
       email: user.email || "",
-      role: user.role || "Administrator",
+      isActive: user.isActive,
+      role: user.role || ROLES.ADMINISTRATOR,
+      password: "",
     });
   };
 
@@ -317,7 +333,9 @@ function App() {
     setEditUserForm({
       username: "",
       email: "",
-      role: "Administrator",
+      isActive: true,
+      role: ROLES.ADMINISTRATOR,
+      password: "",
     });
   };
 
@@ -336,7 +354,27 @@ function App() {
     setEditUserLoading(true);
 
     try {
-      await updateUser(editUser.id, editUserForm);
+      await updateUser(editUser.id, {
+        username: editUserForm.username,
+        email: editUserForm.email,
+        isActive: editUserForm.isActive,
+        role: editUserForm.role,
+        password: editUserForm.password || null,
+      });
+
+      if (editUser.id === currentUser.id) {
+        const updatedSession = saveSession({
+          token: session.token,
+          user: {
+            ...currentUser,
+            username: editUserForm.username.trim(),
+            email: editUserForm.email.trim(),
+            isActive: editUserForm.isActive,
+          },
+        });
+        setSession(updatedSession);
+      }
+
       closeEditUser();
       await loadUsers();
     } catch (err) {
@@ -346,6 +384,16 @@ function App() {
     }
   };
 
+  useEffect(() => setUnauthorizedHandler(() => {
+    setSession(null);
+    setUsers([]);
+    setRestaurants([]);
+    setEmployees([]);
+    setEditUser(null);
+    setPassword("");
+    navigate("/login", { replace: true });
+  }), [navigate]);
+
   useEffect(() => {
     if (!loggedIn) return;
     loadUsers();
@@ -354,8 +402,8 @@ function App() {
   }, [loggedIn]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    setLoggedIn(false);
+    clearSession();
+    setSession(null);
     setUsers([]);
     setRestaurants([]);
     setEmployees([]);
@@ -371,7 +419,9 @@ function App() {
     setEditUserForm({
       username: "",
       email: "",
-      role: "Administrator",
+      isActive: true,
+      role: ROLES.ADMINISTRATOR,
+      password: "",
     });
     setEditUserLoading(false);
     setEditUserError("");
@@ -379,7 +429,7 @@ function App() {
       username: "",
       email: "",
       password: "",
-      role: "Administrator",
+      role: ROLES.ADMINISTRATOR,
     });
     setCreateUserError(null);
     setCreateUserSuccess("");
@@ -400,7 +450,7 @@ function App() {
     });
     setCreateEmployeeError(null);
     setCreateEmployeeSuccess("");
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   if (!loggedIn) {
@@ -454,7 +504,7 @@ function App() {
           </div>
 
           <div style={{ color: "#9ca3af", fontSize: 14 }}>
-            Добро пожаловать, <span style={{ color: "#e6eef8", fontWeight: 600 }}>{username}</span>
+            Добро пожаловать, <span style={{ color: "#e6eef8", fontWeight: 600 }}>{currentUser.username}</span>
           </div>
         </header>
 
@@ -462,7 +512,7 @@ function App() {
           <Routes>
             <Route
               path="/"
-              element={<DashboardPage stats={stats} username={username} />}
+              element={<DashboardPage stats={stats} username={currentUser.username} />}
             />
             <Route
               path="/users"
@@ -471,7 +521,8 @@ function App() {
                   users={users}
                   usersLoading={usersLoading}
                   usersError={usersError}
-                  currentUsername={username}
+                  currentUserId={currentUser.id}
+                  permissions={permissions}
                   onDeleteUser={handleDeleteUser}
                   onEditUser={openEditUser}
                   deleteUserLoadingId={deleteUserLoading}
@@ -508,6 +559,7 @@ function App() {
                   onDeleteRestaurant={handleDeleteRestaurant}
                   deleteRestaurantLoadingId={deleteRestaurantLoading}
                   deleteRestaurantError={deleteRestaurantError}
+                  permissions={permissions}
                 />
               }
             />
@@ -528,12 +580,13 @@ function App() {
                   deleteEmployeeLoadingId={deleteEmployeeLoading}
                   deleteEmployeeError={deleteEmployeeError}
                   restaurants={restaurants}
+                  permissions={permissions}
                 />
               }
             />
             <Route
               path="/settings"
-              element={<SettingsPage username={username} />}
+              element={<SettingsPage username={currentUser.username} />}
             />
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />

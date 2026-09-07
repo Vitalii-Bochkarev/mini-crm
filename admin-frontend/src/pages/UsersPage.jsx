@@ -7,7 +7,8 @@ function UsersPage({
   users,
   usersLoading,
   usersError,
-  currentUsername,
+  currentUserId,
+  permissions,
   onDeleteUser,
   onEditUser,
   deleteUserLoadingId,
@@ -28,14 +29,16 @@ function UsersPage({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <CreateUserForm
-        formData={createUserForm}
-        onFieldChange={onCreateUserFieldChange}
-        onSubmit={onCreateUser}
-        loading={createUserLoading}
-        error={createUserError}
-        success={createUserSuccess}
-      />
+      {permissions.canCreate && (
+        <CreateUserForm
+          formData={createUserForm}
+          onFieldChange={onCreateUserFieldChange}
+          onSubmit={onCreateUser}
+          loading={createUserLoading}
+          error={createUserError}
+          success={createUserSuccess}
+        />
+      )}
 
       <div
         style={{
@@ -57,7 +60,9 @@ function UsersPage({
           users={users}
           loading={usersLoading}
           error={usersError}
-          currentUsername={currentUsername}
+          currentUserId={currentUserId}
+          canEdit={permissions.canEdit}
+          canDelete={permissions.canDelete}
           onDeleteUser={onDeleteUser}
           onEditUser={onEditUser}
           deleteUserLoadingId={deleteUserLoadingId}
@@ -187,7 +192,7 @@ function UsersPage({
                   <select
                     value={editUserForm.role}
                     onChange={(e) => onEditUserFieldChange("role", e.target.value)}
-                    disabled={editUser.username === currentUsername}
+                    disabled={editUser.id === currentUserId}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -196,8 +201,8 @@ function UsersPage({
                       background: "#0f172a",
                       color: "#e6eef8",
                       padding: "12px 14px",
-                      cursor: editUser.username === currentUsername ? "not-allowed" : "pointer",
-                      opacity: editUser.username === currentUsername ? 0.75 : 1,
+                      cursor: editUser.id === currentUserId ? "not-allowed" : "pointer",
+                      opacity: editUser.id === currentUserId ? 0.75 : 1,
                     }}
                   >
                     {ROLE_OPTIONS.map((role) => (
@@ -206,6 +211,46 @@ function UsersPage({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label
+                    style={{ display: "flex", alignItems: "center", color: "#9ca3af", fontSize: 13, cursor: "pointer" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editUserForm.isActive}
+                      onChange={(e) => onEditUserFieldChange("isActive", e.target.checked)}
+                      style={{ marginRight: 10 }}
+                    />
+                    Активен
+                  </label>
+                </div>
+
+                <div>
+                  <label
+                    style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
+                  >
+                    Новый пароль
+                  </label>
+                  <input
+                    type="password"
+                    value={editUserForm.password}
+                    onChange={(e) => onEditUserFieldChange("password", e.target.value)}
+                    autoComplete="new-password"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "#0f172a",
+                      color: "#e6eef8",
+                      padding: "12px 14px",
+                    }}
+                  />
+                  <p style={{ color: "#9ca3af", margin: "6px 0 0", fontSize: 12 }}>
+                    Оставьте поле пустым, чтобы сохранить текущий пароль.
+                  </p>
                 </div>
               </div>
 
