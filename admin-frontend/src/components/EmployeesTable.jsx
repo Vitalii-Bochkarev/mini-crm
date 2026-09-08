@@ -48,6 +48,7 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
   }
 
   const showDeleteError = Boolean(deleteError);
+  const deleteInProgress = deleteLoadingId !== null;
 
   if (employees.length === 0) {
     return (
@@ -106,16 +107,16 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
                       <button
                         type="button"
                         onClick={() => onDeleteEmployee(employee)}
-                        disabled={isDeleting}
+                        disabled={deleteInProgress}
                         style={{
                           border: "none",
                           borderRadius: 8,
                           padding: "8px 12px",
-                          background: isDeleting ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
+                          background: deleteInProgress ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
                           color: "#fff",
                           fontWeight: 700,
-                          cursor: isDeleting ? "not-allowed" : "pointer",
-                          opacity: isDeleting ? 0.75 : 1,
+                          cursor: deleteInProgress ? "not-allowed" : "pointer",
+                          opacity: deleteInProgress ? 0.75 : 1,
                         }}
                       >
                         {isDeleting ? "Удаление..." : "Удалить"}

@@ -1,11 +1,23 @@
 import React from "react";
 import CreateEmployeeForm from "../components/CreateEmployeeForm";
 import EmployeesTable from "../components/EmployeesTable";
+import PaginationControls from "../components/PaginationControls";
 
 function EmployeesPage({
   employees,
   employeesLoading,
   employeesError,
+  totalCount,
+  page,
+  pageSize,
+  searchInput,
+  sortBy,
+  sortDirection,
+  onSearchChange,
+  onSortByChange,
+  onSortDirectionChange,
+  onPageChange,
+  onPageSizeChange,
   createEmployeeForm,
   onCreateEmployeeFieldChange,
   onCreateEmployee,
@@ -15,7 +27,11 @@ function EmployeesPage({
   onDeleteEmployee,
   deleteEmployeeLoadingId,
   deleteEmployeeError,
-  restaurants,
+  restaurantOptions,
+  restaurantOptionsLoading,
+  restaurantOptionsError,
+  restaurantOptionsRetrying,
+  onRetryRestaurantOptions,
   permissions,
 }) {
   return (
@@ -28,7 +44,11 @@ function EmployeesPage({
           loading={createEmployeeLoading}
           error={createEmployeeError}
           success={createEmployeeSuccess}
-          restaurants={restaurants}
+          restaurants={restaurantOptions}
+          restaurantsLoading={restaurantOptionsLoading}
+          restaurantsError={restaurantOptionsError}
+          restaurantsRetrying={restaurantOptionsRetrying}
+          onRetryRestaurants={onRetryRestaurantOptions}
         />
       )}
 
@@ -48,6 +68,73 @@ function EmployeesPage({
           </p>
         </div>
 
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: 12,
+            flexWrap: "wrap",
+            marginBottom: 20,
+          }}
+        >
+          <label style={{ flex: "1 1 260px", color: "#9ca3af", fontSize: 13 }}>
+            Поиск
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Имя, должность или ресторан"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                marginTop: 6,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "#0f172a",
+                color: "#e6eef8",
+                padding: "10px 12px",
+              }}
+            />
+          </label>
+
+          <label style={{ color: "#9ca3af", fontSize: 13 }}>
+            Сортировка
+            <select
+              value={sortBy}
+              onChange={(e) => onSortByChange(e.target.value)}
+              style={{
+                display: "block",
+                marginTop: 6,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "#0f172a",
+                color: "#e6eef8",
+                padding: "10px 12px",
+              }}
+            >
+              <option value="firstName">Имя</option>
+              <option value="lastName">Фамилия</option>
+              <option value="position">Должность</option>
+              <option value="salary">Зарплата</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={onSortDirectionChange}
+            style={{
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 10,
+              padding: "10px 14px",
+              background: "#0f172a",
+              color: "#e6eef8",
+              cursor: "pointer",
+            }}
+          >
+            {sortDirection === "asc" ? "По возрастанию ↑" : "По убыванию ↓"}
+          </button>
+        </div>
+
         <EmployeesTable
           employees={employees}
           loading={employeesLoading}
@@ -56,6 +143,15 @@ function EmployeesPage({
           deleteLoadingId={deleteEmployeeLoadingId}
           deleteError={deleteEmployeeError}
           canDelete={permissions.canDelete}
+        />
+
+        <PaginationControls
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          loading={employeesLoading}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
         />
       </div>
     </div>

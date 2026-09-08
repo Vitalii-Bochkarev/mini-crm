@@ -1,6 +1,20 @@
 import React from "react";
 
-function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error, success, restaurants = [] }) {
+function CreateEmployeeForm({
+  formData,
+  onFieldChange,
+  onSubmit,
+  loading,
+  error,
+  success,
+  restaurants = [],
+  restaurantsLoading,
+  restaurantsError,
+  restaurantsRetrying,
+  onRetryRestaurants,
+}) {
+  const submitDisabled = loading || restaurantsLoading || Boolean(restaurantsError) || restaurants.length === 0;
+
   return (
     <div
       style={{
@@ -148,14 +162,47 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
               padding: "12px 14px",
             }}
             required
+            disabled={restaurantsLoading}
           >
-            <option value="">Выберите ресторан</option>
+            <option value="">
+              {restaurantsLoading
+                ? "Загрузка ресторанов..."
+                : restaurants.length === 0
+                  ? "Нет доступных активных ресторанов"
+                  : "Выберите ресторан"}
+            </option>
             {restaurants.map((restaurant) => (
               <option key={restaurant.id} value={restaurant.id}>
                 {restaurant.name}
               </option>
             ))}
           </select>
+          {(restaurantsError || restaurantsRetrying) && (
+            <div style={{ marginTop: 8 }}>
+              {restaurantsError && (
+                <div style={{ color: "#fecaca", fontSize: 13 }}>
+                  {restaurantsError}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onRetryRestaurants}
+                disabled={restaurantsLoading}
+                style={{
+                  marginTop: 8,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  background: "#0f172a",
+                  color: "#e6eef8",
+                  cursor: restaurantsLoading ? "not-allowed" : "pointer",
+                  opacity: restaurantsLoading ? 0.6 : 1,
+                }}
+              >
+                {restaurantsLoading ? "Повторная загрузка..." : "Повторить"}
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, gridColumn: "1 / -1" }}>
@@ -173,21 +220,21 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
         <div style={{ gridColumn: "1 / -1" }}>
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitDisabled}
             style={{
               width: "100%",
               borderRadius: 10,
               border: "none",
               padding: "12px 24px",
-              background: loading ? "rgba(107, 114, 128, 0.35)" : "#2563eb",
+              background: submitDisabled ? "rgba(107, 114, 128, 0.35)" : "#2563eb",
               color: "white",
               fontSize: 14,
               fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.75 : 1,
+              cursor: submitDisabled ? "not-allowed" : "pointer",
+              opacity: submitDisabled ? 0.75 : 1,
             }}
           >
-            {loading ? "Добавление..." : "Добавить сотрудника"}
+            {loading ? "Добавление..." : restaurantsLoading ? "Загрузка ресторанов..." : "Добавить сотрудника"}
           </button>
         </div>
       </form>

@@ -1,11 +1,23 @@
 import React from "react";
 import CreateRestaurantForm from "../components/CreateRestaurantForm";
+import PaginationControls from "../components/PaginationControls";
 import RestaurantsTable from "../components/RestaurantsTable";
 
 function RestaurantsPage({
   restaurants,
   restaurantsLoading,
   restaurantsError,
+  totalCount,
+  page,
+  pageSize,
+  searchInput,
+  sortBy,
+  sortDirection,
+  onSearchChange,
+  onSortByChange,
+  onSortDirectionChange,
+  onPageChange,
+  onPageSizeChange,
   createRestaurantForm,
   onCreateRestaurantFieldChange,
   onCreateRestaurant,
@@ -46,6 +58,72 @@ function RestaurantsPage({
           </p>
         </div>
 
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: 12,
+            flexWrap: "wrap",
+            marginBottom: 20,
+          }}
+        >
+          <label style={{ flex: "1 1 260px", color: "#9ca3af", fontSize: 13 }}>
+            Поиск
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Название или город"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                marginTop: 6,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "#0f172a",
+                color: "#e6eef8",
+                padding: "10px 12px",
+              }}
+            />
+          </label>
+
+          <label style={{ color: "#9ca3af", fontSize: 13 }}>
+            Сортировка
+            <select
+              value={sortBy}
+              onChange={(e) => onSortByChange(e.target.value)}
+              style={{
+                display: "block",
+                marginTop: 6,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "#0f172a",
+                color: "#e6eef8",
+                padding: "10px 12px",
+              }}
+            >
+              <option value="name">Название</option>
+              <option value="city">Город</option>
+              <option value="createdAt">Дата создания</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={onSortDirectionChange}
+            style={{
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 10,
+              padding: "10px 14px",
+              background: "#0f172a",
+              color: "#e6eef8",
+              cursor: "pointer",
+            }}
+          >
+            {sortDirection === "asc" ? "По возрастанию ↑" : "По убыванию ↓"}
+          </button>
+        </div>
+
         <RestaurantsTable
           restaurants={restaurants}
           loading={restaurantsLoading}
@@ -54,6 +132,15 @@ function RestaurantsPage({
           deleteLoadingId={deleteRestaurantLoadingId}
           deleteError={deleteRestaurantError}
           canDelete={permissions.canDelete}
+        />
+
+        <PaginationControls
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          loading={restaurantsLoading}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
         />
       </div>
     </div>

@@ -108,6 +108,27 @@ function getValidationMessages(errors) {
     .map((message) => message.trim());
 }
 
+function buildPagedUrl(path, { search, page, pageSize, sortBy, sortDirection }) {
+  const query = new URLSearchParams();
+
+  if (search?.trim()) query.set("search", search.trim());
+  query.set("page", String(page));
+  query.set("pageSize", String(pageSize));
+  if (sortBy) query.set("sortBy", sortBy);
+  if (sortDirection) query.set("sortDirection", sortDirection);
+
+  return `${API_URL}${path}?${query.toString()}`;
+}
+
+function toPagedResult(data, fallbackPage, fallbackPageSize) {
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    totalCount: Number.isInteger(data?.totalCount) ? data.totalCount : 0,
+    page: Number.isInteger(data?.page) ? data.page : fallbackPage,
+    pageSize: Number.isInteger(data?.pageSize) ? data.pageSize : fallbackPageSize,
+  };
+}
+
 async function request(url, options = {}, requiresAuth = true) {
   const headers = new Headers(options.headers);
   let requestToken = null;
@@ -127,11 +148,20 @@ async function request(url, options = {}, requiresAuth = true) {
 
   try {
     res = await fetch(url, { ...options, headers });
-  } catch {
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
     throw new ApiError("Не удалось связаться с сервером. Проверьте подключение.");
   }
 
-  const data = res.status === 204 ? null : await res.json().catch(() => ({}));
+  let data = null;
+  if (res.status !== 204) {
+    try {
+      data = await res.json();
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+      data = {};
+    }
+  }
 
   if (!res.ok) {
     if (requiresAuth && res.status === 401) {
@@ -208,12 +238,26 @@ export async function updateUser(userId, userData) {
   return data;
 }
 
-export async function getRestaurants() {
-  const data = await request(`${API_URL}/restaurants`, {
+export async function getRestaurants({
+  search = "",
+  page = 1,
+  pageSize = 20,
+  sortBy = "createdAt",
+  sortDirection = "asc",
+  signal,
+} = {}) {
+  const data = await request(buildPagedUrl("/restaurants", {
+    search,
+    page,
+    pageSize,
+    sortBy,
+    sortDirection,
+  }), {
     method: "GET",
+    signal,
   });
 
-  return Array.isArray(data) ? data : data?.items || [];
+  return toPagedResult(data, page, pageSize);
 }
 
 export async function createRestaurant(restaurantData) {
@@ -236,12 +280,26 @@ export async function deleteRestaurant(restaurantId) {
   return data;
 }
 
-export async function getEmployees() {
-  const data = await request(`${API_URL}/employees`, {
+export async function getEmployees({
+  search = "",
+  page = 1,
+  pageSize = 20,
+  sortBy = "lastName",
+  sortDirection = "asc",
+  signal,
+} = {}) {
+  const data = await request(buildPagedUrl("/employees", {
+    search,
+    page,
+    pageSize,
+    sortBy,
+    sortDirection,
+  }), {
     method: "GET",
+    signal,
   });
 
-  return Array.isArray(data) ? data : data?.items || [];
+  return toPagedResult(data, page, pageSize);
 }
 
 export async function getRestaurantEmployees(restaurantId) {

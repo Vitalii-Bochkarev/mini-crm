@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import DashboardPage from "./pages/DashboardPage";
@@ -46,8 +46,16 @@ function App() {
   const [createUserSuccess, setCreateUserSuccess] = useState("");
 
   const [restaurants, setRestaurants] = useState([]);
-  const [restaurantsLoading, setRestaurantsLoading] = useState(false);
+  const [restaurantsTotalCount, setRestaurantsTotalCount] = useState(0);
+  const [restaurantsPage, setRestaurantsPage] = useState(1);
+  const [restaurantsPageSize, setRestaurantsPageSize] = useState(20);
+  const [restaurantsSearchInput, setRestaurantsSearchInput] = useState("");
+  const [restaurantsDebouncedSearch, setRestaurantsDebouncedSearch] = useState("");
+  const [restaurantsSortBy, setRestaurantsSortBy] = useState("createdAt");
+  const [restaurantsSortDirection, setRestaurantsSortDirection] = useState("asc");
+  const [restaurantsLoading, setRestaurantsLoading] = useState(Boolean(session));
   const [restaurantsError, setRestaurantsError] = useState(null);
+  const [restaurantsRefreshKey, setRestaurantsRefreshKey] = useState(0);
   const [createRestaurantForm, setCreateRestaurantForm] = useState({
     name: "",
     city: "",
@@ -60,8 +68,16 @@ function App() {
   const [deleteRestaurantError, setDeleteRestaurantError] = useState("");
 
   const [employees, setEmployees] = useState([]);
-  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employeesTotalCount, setEmployeesTotalCount] = useState(0);
+  const [employeesPage, setEmployeesPage] = useState(1);
+  const [employeesPageSize, setEmployeesPageSize] = useState(20);
+  const [employeesSearchInput, setEmployeesSearchInput] = useState("");
+  const [employeesDebouncedSearch, setEmployeesDebouncedSearch] = useState("");
+  const [employeesSortBy, setEmployeesSortBy] = useState("lastName");
+  const [employeesSortDirection, setEmployeesSortDirection] = useState("asc");
+  const [employeesLoading, setEmployeesLoading] = useState(Boolean(session));
   const [employeesError, setEmployeesError] = useState(null);
+  const [employeesRefreshKey, setEmployeesRefreshKey] = useState(0);
   const [createEmployeeForm, setCreateEmployeeForm] = useState({
     firstName: "",
     lastName: "",
@@ -82,6 +98,22 @@ function App() {
     () => getUiPermissions(currentUser?.role),
     [currentUser?.role],
   );
+  const sessionTokenRef = useRef(session?.token || null);
+  const restaurantsRequestGenerationRef = useRef(0);
+  const employeesRequestGenerationRef = useRef(0);
+  const restaurantOptionsRequestGenerationRef = useRef(0);
+  const restaurantsSearchChangePendingRef = useRef(false);
+  const employeesSearchChangePendingRef = useRef(false);
+  const deleteRestaurantRequestRef = useRef(null);
+  const deleteEmployeeRequestRef = useRef(null);
+
+  const [restaurantOptions, setRestaurantOptions] = useState([]);
+  const [restaurantOptionsLoading, setRestaurantOptionsLoading] = useState(
+    Boolean(session && permissions.canCreate),
+  );
+  const [restaurantOptionsError, setRestaurantOptionsError] = useState(null);
+  const [restaurantOptionsRetrying, setRestaurantOptionsRetrying] = useState(false);
+  const [restaurantOptionsRefreshKey, setRestaurantOptionsRefreshKey] = useState(0);
 
   const stats = useMemo(() => {
     const totalUsers = users.length;
@@ -111,45 +143,23 @@ function App() {
             ? "Настройки"
             : "Обзор";
 
-  const loadUsers = async () => {
+  const loadUsers = async (expectedToken = sessionTokenRef.current) => {
+    if (!expectedToken) return;
+
     setUsersLoading(true);
     setUsersError(null);
 
     try {
       const fetchedUsers = await getUsers();
+      if (sessionTokenRef.current !== expectedToken) return;
       setUsers(fetchedUsers);
     } catch (err) {
+      if (sessionTokenRef.current !== expectedToken) return;
       setUsersError(err.message || "Не удалось загрузить пользователей");
     } finally {
-      setUsersLoading(false);
-    }
-  };
-
-  const loadRestaurants = async () => {
-    setRestaurantsLoading(true);
-    setRestaurantsError(null);
-
-    try {
-      const fetchedRestaurants = await getRestaurants();
-      setRestaurants(fetchedRestaurants);
-    } catch (err) {
-      setRestaurantsError(err.message || "Не удалось загрузить рестораны");
-    } finally {
-      setRestaurantsLoading(false);
-    }
-  };
-
-  const loadEmployees = async () => {
-    setEmployeesLoading(true);
-    setEmployeesError(null);
-
-    try {
-      const fetchedEmployees = await getEmployees();
-      setEmployees(fetchedEmployees);
-    } catch (err) {
-      setEmployeesError(err.message || "Не удалось загрузить сотрудников");
-    } finally {
-      setEmployeesLoading(false);
+      if (sessionTokenRef.current === expectedToken) {
+        setUsersLoading(false);
+      }
     }
   };
 
@@ -160,6 +170,17 @@ function App() {
 
     try {
       const authenticatedSession = await login(username, password);
+      sessionTokenRef.current = authenticatedSession.token;
+      restaurantsRequestGenerationRef.current += 1;
+      employeesRequestGenerationRef.current += 1;
+      restaurantOptionsRequestGenerationRef.current += 1;
+      setRestaurantsLoading(true);
+      setRestaurantsError(null);
+      setEmployeesLoading(true);
+      setEmployeesError(null);
+      setRestaurantOptionsLoading(getUiPermissions(authenticatedSession.user.role).canCreate);
+      setRestaurantOptionsError(null);
+      setRestaurantOptionsRetrying(false);
       setSession(authenticatedSession);
       setPassword("");
       navigate("/");
@@ -193,12 +214,14 @@ function App() {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    const requestToken = sessionTokenRef.current;
     setCreateUserError(null);
     setCreateUserSuccess("");
     setCreateUserLoading(true);
 
     try {
       await createUser(createUserForm);
+      if (sessionTokenRef.current !== requestToken) return;
       setCreateUserSuccess("Пользователь успешно создан.");
       setCreateUserForm({
         username: "",
@@ -208,31 +231,47 @@ function App() {
       });
       await loadUsers();
     } catch (err) {
+      if (sessionTokenRef.current !== requestToken) return;
       setCreateUserError(err.message || "Не удалось создать пользователя");
     } finally {
-      setCreateUserLoading(false);
+      if (sessionTokenRef.current === requestToken) {
+        setCreateUserLoading(false);
+      }
     }
   };
 
   const handleCreateRestaurant = async (e) => {
     e.preventDefault();
+    const requestToken = sessionTokenRef.current;
     setCreateRestaurantError(null);
     setCreateRestaurantSuccess("");
     setCreateRestaurantLoading(true);
 
     try {
       await createRestaurant(createRestaurantForm);
+      if (sessionTokenRef.current !== requestToken) return;
       setCreateRestaurantSuccess("Ресторан успешно создан.");
       setCreateRestaurantForm({
         name: "",
         city: "",
         isActive: true,
       });
-      await loadRestaurants();
+      restaurantsRequestGenerationRef.current += 1;
+      setRestaurantsLoading(true);
+      setRestaurantsRefreshKey((value) => value + 1);
+      restaurantOptionsRequestGenerationRef.current += 1;
+      setRestaurantOptions([]);
+      setRestaurantOptionsLoading(true);
+      setRestaurantOptionsError(null);
+      setRestaurantOptionsRetrying(false);
+      setRestaurantOptionsRefreshKey((value) => value + 1);
     } catch (err) {
+      if (sessionTokenRef.current !== requestToken) return;
       setCreateRestaurantError(err.message || "Не удалось создать ресторан");
     } finally {
-      setCreateRestaurantLoading(false);
+      if (sessionTokenRef.current === requestToken) {
+        setCreateRestaurantLoading(false);
+      }
     }
   };
 
@@ -242,16 +281,21 @@ function App() {
       return;
     }
 
+    const requestToken = sessionTokenRef.current;
     setDeleteUserError("");
     setDeleteUserLoading(user.id);
 
     try {
       await deleteUser(user.id);
+      if (sessionTokenRef.current !== requestToken) return;
       await loadUsers();
     } catch (err) {
+      if (sessionTokenRef.current !== requestToken) return;
       setDeleteUserError(err.message || "Не удалось удалить пользователя");
     } finally {
-      setDeleteUserLoading(null);
+      if (sessionTokenRef.current === requestToken) {
+        setDeleteUserLoading(null);
+      }
     }
   };
 
@@ -275,27 +319,58 @@ function App() {
   };
 
   const handleDeleteRestaurant = async (restaurant) => {
+    if (deleteRestaurantRequestRef.current !== null) return;
+
+    const deleteRequest = Symbol("deleteRestaurant");
+    deleteRestaurantRequestRef.current = deleteRequest;
+    const requestToken = sessionTokenRef.current;
     setDeleteRestaurantError("");
     setDeleteRestaurantLoading(restaurant.id);
 
     try {
       await deleteRestaurant(restaurant.id);
-      await loadRestaurants();
+      if (
+        sessionTokenRef.current !== requestToken ||
+        deleteRestaurantRequestRef.current !== deleteRequest
+      ) return;
+
+      restaurantsRequestGenerationRef.current += 1;
+      setRestaurantsLoading(true);
+      setRestaurantsRefreshKey((value) => value + 1);
+      restaurantOptionsRequestGenerationRef.current += 1;
+      setRestaurantOptions([]);
+      setRestaurantOptionsLoading(true);
+      setRestaurantOptionsError(null);
+      setRestaurantOptionsRetrying(false);
+      setRestaurantOptionsRefreshKey((value) => value + 1);
     } catch (err) {
+      if (
+        sessionTokenRef.current !== requestToken ||
+        deleteRestaurantRequestRef.current !== deleteRequest
+      ) return;
       setDeleteRestaurantError(err.message || "Не удалось удалить ресторан");
     } finally {
-      setDeleteRestaurantLoading(null);
+      const currentDeleteIsCurrent =
+        sessionTokenRef.current === requestToken &&
+        deleteRestaurantRequestRef.current === deleteRequest;
+
+      if (currentDeleteIsCurrent) {
+        deleteRestaurantRequestRef.current = null;
+        setDeleteRestaurantLoading(null);
+      }
     }
   };
 
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
+    const requestToken = sessionTokenRef.current;
     setCreateEmployeeError(null);
     setCreateEmployeeSuccess("");
     setCreateEmployeeLoading(true);
 
     try {
       await createEmployee(createEmployeeForm);
+      if (sessionTokenRef.current !== requestToken) return;
       setCreateEmployeeSuccess("Сотрудник успешно создан.");
       setCreateEmployeeForm({
         firstName: "",
@@ -305,25 +380,53 @@ function App() {
         restaurantId: "",
         isActive: true,
       });
-      await loadEmployees();
+      employeesRequestGenerationRef.current += 1;
+      setEmployeesLoading(true);
+      setEmployeesRefreshKey((value) => value + 1);
     } catch (err) {
+      if (sessionTokenRef.current !== requestToken) return;
       setCreateEmployeeError(err.message || "Не удалось создать сотрудника");
     } finally {
-      setCreateEmployeeLoading(false);
+      if (sessionTokenRef.current === requestToken) {
+        setCreateEmployeeLoading(false);
+      }
     }
   };
 
   const handleDeleteEmployee = async (employee) => {
+    if (deleteEmployeeRequestRef.current !== null) return;
+
+    const deleteRequest = Symbol("deleteEmployee");
+    deleteEmployeeRequestRef.current = deleteRequest;
+    const requestToken = sessionTokenRef.current;
     setDeleteEmployeeError("");
     setDeleteEmployeeLoading(employee.id);
 
     try {
       await deleteEmployee(employee.id);
-      await loadEmployees();
+      if (
+        sessionTokenRef.current !== requestToken ||
+        deleteEmployeeRequestRef.current !== deleteRequest
+      ) return;
+
+      employeesRequestGenerationRef.current += 1;
+      setEmployeesLoading(true);
+      setEmployeesRefreshKey((value) => value + 1);
     } catch (err) {
+      if (
+        sessionTokenRef.current !== requestToken ||
+        deleteEmployeeRequestRef.current !== deleteRequest
+      ) return;
       setDeleteEmployeeError(err.message || "Не удалось удалить сотрудника");
     } finally {
-      setDeleteEmployeeLoading(null);
+      const currentDeleteIsCurrent =
+        sessionTokenRef.current === requestToken &&
+        deleteEmployeeRequestRef.current === deleteRequest;
+
+      if (currentDeleteIsCurrent) {
+        deleteEmployeeRequestRef.current = null;
+        setDeleteEmployeeLoading(null);
+      }
     }
   };
 
@@ -349,6 +452,7 @@ function App() {
   const handleEditUserSubmit = async (e) => {
     e.preventDefault();
     if (!editUser) return;
+    const requestToken = sessionTokenRef.current;
 
     setEditUserError("");
     setEditUserLoading(true);
@@ -361,6 +465,7 @@ function App() {
         role: editUserForm.role,
         password: editUserForm.password || null,
       });
+      if (sessionTokenRef.current !== requestToken) return;
 
       if (editUser.id === currentUser.id) {
         const updatedSession = saveSession({
@@ -378,17 +483,192 @@ function App() {
       closeEditUser();
       await loadUsers();
     } catch (err) {
+      if (sessionTokenRef.current !== requestToken) return;
       setEditUserError(err.message || "Не удалось изменить пользователя");
     } finally {
-      setEditUserLoading(false);
+      if (sessionTokenRef.current === requestToken) {
+        setEditUserLoading(false);
+      }
     }
   };
 
+  const handleRestaurantsSearchChange = (value) => {
+    restaurantsRequestGenerationRef.current += 1;
+    restaurantsSearchChangePendingRef.current = true;
+    setRestaurantsSearchInput(value);
+  };
+
+  const handleRestaurantsSortByChange = (value) => {
+    restaurantsRequestGenerationRef.current += 1;
+    setRestaurantsPage(1);
+    setRestaurantsSortBy(value);
+    setRestaurantsLoading(true);
+    setRestaurantsError(null);
+  };
+
+  const handleRestaurantsSortDirectionChange = () => {
+    restaurantsRequestGenerationRef.current += 1;
+    setRestaurantsPage(1);
+    setRestaurantsSortDirection((value) => value === "asc" ? "desc" : "asc");
+    setRestaurantsLoading(true);
+    setRestaurantsError(null);
+  };
+
+  const handleRestaurantsPageChange = (value) => {
+    restaurantsRequestGenerationRef.current += 1;
+    setRestaurantsPage(Math.max(1, value));
+    setRestaurantsLoading(true);
+    setRestaurantsError(null);
+  };
+
+  const handleRestaurantsPageSizeChange = (value) => {
+    restaurantsRequestGenerationRef.current += 1;
+    setRestaurantsPage(1);
+    setRestaurantsPageSize(value);
+    setRestaurantsLoading(true);
+    setRestaurantsError(null);
+  };
+
+  const handleEmployeesSearchChange = (value) => {
+    employeesRequestGenerationRef.current += 1;
+    employeesSearchChangePendingRef.current = true;
+    setEmployeesSearchInput(value);
+  };
+
+  const handleEmployeesSortByChange = (value) => {
+    employeesRequestGenerationRef.current += 1;
+    setEmployeesPage(1);
+    setEmployeesSortBy(value);
+    setEmployeesLoading(true);
+    setEmployeesError(null);
+  };
+
+  const handleEmployeesSortDirectionChange = () => {
+    employeesRequestGenerationRef.current += 1;
+    setEmployeesPage(1);
+    setEmployeesSortDirection((value) => value === "asc" ? "desc" : "asc");
+    setEmployeesLoading(true);
+    setEmployeesError(null);
+  };
+
+  const handleEmployeesPageChange = (value) => {
+    employeesRequestGenerationRef.current += 1;
+    setEmployeesPage(Math.max(1, value));
+    setEmployeesLoading(true);
+    setEmployeesError(null);
+  };
+
+  const handleEmployeesPageSizeChange = (value) => {
+    employeesRequestGenerationRef.current += 1;
+    setEmployeesPage(1);
+    setEmployeesPageSize(value);
+    setEmployeesLoading(true);
+    setEmployeesError(null);
+  };
+
+  const handleRetryRestaurantOptions = () => {
+    if (restaurantOptionsLoading) return;
+
+    restaurantOptionsRequestGenerationRef.current += 1;
+    setRestaurantOptionsError(null);
+    setRestaurantOptionsLoading(true);
+    setRestaurantOptionsRetrying(true);
+    setRestaurantOptionsRefreshKey((value) => value + 1);
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const nextSearch = restaurantsSearchInput.trim();
+      if (nextSearch === restaurantsDebouncedSearch) {
+        if (restaurantsSearchChangePendingRef.current) {
+          restaurantsSearchChangePendingRef.current = false;
+          restaurantsRequestGenerationRef.current += 1;
+          setRestaurantsLoading(true);
+          setRestaurantsError(null);
+          setRestaurantsRefreshKey((value) => value + 1);
+        }
+        return;
+      }
+
+      restaurantsSearchChangePendingRef.current = false;
+      restaurantsRequestGenerationRef.current += 1;
+      setRestaurantsPage(1);
+      setRestaurantsDebouncedSearch(nextSearch);
+      setRestaurantsLoading(true);
+      setRestaurantsError(null);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [restaurantsSearchInput, restaurantsDebouncedSearch]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const nextSearch = employeesSearchInput.trim();
+      if (nextSearch === employeesDebouncedSearch) {
+        if (employeesSearchChangePendingRef.current) {
+          employeesSearchChangePendingRef.current = false;
+          employeesRequestGenerationRef.current += 1;
+          setEmployeesLoading(true);
+          setEmployeesError(null);
+          setEmployeesRefreshKey((value) => value + 1);
+        }
+        return;
+      }
+
+      employeesSearchChangePendingRef.current = false;
+      employeesRequestGenerationRef.current += 1;
+      setEmployeesPage(1);
+      setEmployeesDebouncedSearch(nextSearch);
+      setEmployeesLoading(true);
+      setEmployeesError(null);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [employeesSearchInput, employeesDebouncedSearch]);
+
   useEffect(() => setUnauthorizedHandler(() => {
+    sessionTokenRef.current = null;
+    restaurantsRequestGenerationRef.current += 1;
+    employeesRequestGenerationRef.current += 1;
+    restaurantOptionsRequestGenerationRef.current += 1;
+    restaurantsSearchChangePendingRef.current = false;
+    employeesSearchChangePendingRef.current = false;
+    deleteRestaurantRequestRef.current = null;
+    deleteEmployeeRequestRef.current = null;
     setSession(null);
     setUsers([]);
+    setUsersLoading(false);
     setRestaurants([]);
+    setRestaurantsTotalCount(0);
+    setRestaurantsPage(1);
+    setRestaurantsPageSize(20);
+    setRestaurantsSearchInput("");
+    setRestaurantsDebouncedSearch("");
+    setRestaurantsSortBy("createdAt");
+    setRestaurantsSortDirection("asc");
+    setRestaurantsLoading(false);
+    setRestaurantsError(null);
     setEmployees([]);
+    setEmployeesTotalCount(0);
+    setEmployeesPage(1);
+    setEmployeesPageSize(20);
+    setEmployeesSearchInput("");
+    setEmployeesDebouncedSearch("");
+    setEmployeesSortBy("lastName");
+    setEmployeesSortDirection("asc");
+    setEmployeesLoading(false);
+    setEmployeesError(null);
+    setRestaurantOptions([]);
+    setRestaurantOptionsLoading(false);
+    setRestaurantOptionsError(null);
+    setRestaurantOptionsRetrying(false);
+    setCreateUserLoading(false);
+    setDeleteUserLoading(null);
+    setEditUserLoading(false);
+    setCreateRestaurantLoading(false);
+    setDeleteRestaurantLoading(null);
+    setCreateEmployeeLoading(false);
+    setDeleteEmployeeLoading(null);
     setEditUser(null);
     setPassword("");
     navigate("/login", { replace: true });
@@ -396,17 +676,258 @@ function App() {
 
   useEffect(() => {
     if (!loggedIn) return;
-    loadUsers();
-    loadRestaurants();
-    loadEmployees();
-  }, [loggedIn]);
+    loadUsers(session.token);
+  }, [loggedIn, session?.token]);
+
+  useEffect(() => {
+    const requestToken = session?.token;
+    if (!requestToken) return;
+
+    const requestGeneration = ++restaurantsRequestGenerationRef.current;
+    const controller = new AbortController();
+    let active = true;
+
+    getRestaurants({
+      search: restaurantsDebouncedSearch,
+      page: restaurantsPage,
+      pageSize: restaurantsPageSize,
+      sortBy: restaurantsSortBy,
+      sortDirection: restaurantsSortDirection,
+      signal: controller.signal,
+    }).then((result) => {
+      if (
+        !active ||
+        sessionTokenRef.current !== requestToken ||
+        restaurantsRequestGenerationRef.current !== requestGeneration
+      ) return;
+
+      const totalPages = Math.max(1, Math.ceil(result.totalCount / result.pageSize));
+      if (result.page > totalPages || restaurantsPage > totalPages) {
+        restaurantsRequestGenerationRef.current += 1;
+        setRestaurantsTotalCount(result.totalCount);
+        setRestaurantsPageSize(result.pageSize);
+        setRestaurantsPage(Math.max(1, totalPages));
+        setRestaurantsLoading(true);
+        setRestaurantsError(null);
+        return;
+      }
+
+      setRestaurants(result.items);
+      setRestaurantsTotalCount(result.totalCount);
+      setRestaurantsError(null);
+      setRestaurantsPage(result.page);
+      setRestaurantsPageSize(result.pageSize);
+    }).catch((err) => {
+      if (
+        err?.name === "AbortError" ||
+        !active ||
+        sessionTokenRef.current !== requestToken ||
+        restaurantsRequestGenerationRef.current !== requestGeneration
+      ) return;
+      setRestaurantsError(err.message || "Не удалось загрузить рестораны");
+    }).finally(() => {
+      if (
+        active &&
+        sessionTokenRef.current === requestToken &&
+        restaurantsRequestGenerationRef.current === requestGeneration
+      ) {
+        setRestaurantsLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [session?.token, restaurantsDebouncedSearch, restaurantsPage, restaurantsPageSize, restaurantsSortBy, restaurantsSortDirection, restaurantsRefreshKey]);
+
+  useEffect(() => {
+    const requestToken = session?.token;
+    if (!requestToken) return;
+
+    const requestGeneration = ++employeesRequestGenerationRef.current;
+    const controller = new AbortController();
+    let active = true;
+
+    getEmployees({
+      search: employeesDebouncedSearch,
+      page: employeesPage,
+      pageSize: employeesPageSize,
+      sortBy: employeesSortBy,
+      sortDirection: employeesSortDirection,
+      signal: controller.signal,
+    }).then((result) => {
+      if (
+        !active ||
+        sessionTokenRef.current !== requestToken ||
+        employeesRequestGenerationRef.current !== requestGeneration
+      ) return;
+
+      const totalPages = Math.max(1, Math.ceil(result.totalCount / result.pageSize));
+      if (result.page > totalPages || employeesPage > totalPages) {
+        employeesRequestGenerationRef.current += 1;
+        setEmployeesTotalCount(result.totalCount);
+        setEmployeesPageSize(result.pageSize);
+        setEmployeesPage(Math.max(1, totalPages));
+        setEmployeesLoading(true);
+        setEmployeesError(null);
+        return;
+      }
+
+      setEmployees(result.items);
+      setEmployeesTotalCount(result.totalCount);
+      setEmployeesError(null);
+      setEmployeesPage(result.page);
+      setEmployeesPageSize(result.pageSize);
+    }).catch((err) => {
+      if (
+        err?.name === "AbortError" ||
+        !active ||
+        sessionTokenRef.current !== requestToken ||
+        employeesRequestGenerationRef.current !== requestGeneration
+      ) return;
+      setEmployeesError(err.message || "Не удалось загрузить сотрудников");
+    }).finally(() => {
+      if (
+        active &&
+        sessionTokenRef.current === requestToken &&
+        employeesRequestGenerationRef.current === requestGeneration
+      ) {
+        setEmployeesLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [session?.token, employeesDebouncedSearch, employeesPage, employeesPageSize, employeesSortBy, employeesSortDirection, employeesRefreshKey]);
+
+  useEffect(() => {
+    const requestToken = session?.token;
+    if (!requestToken || !permissions.canCreate) return;
+
+    const requestGeneration = ++restaurantOptionsRequestGenerationRef.current;
+    const controller = new AbortController();
+    let active = true;
+
+    const loadRestaurantOptions = async () => {
+      const restaurantsById = new Map();
+      let lookupPage = 1;
+      let totalCount;
+
+      do {
+        const result = await getRestaurants({
+          page: lookupPage,
+          pageSize: 100,
+          sortBy: "name",
+          sortDirection: "asc",
+          signal: controller.signal,
+        });
+
+        if (
+          !active ||
+          sessionTokenRef.current !== requestToken ||
+          restaurantOptionsRequestGenerationRef.current !== requestGeneration
+        ) return;
+
+        result.items.forEach((restaurant) => {
+          restaurantsById.set(restaurant.id, restaurant);
+        });
+        totalCount = result.totalCount;
+        lookupPage += 1;
+
+        if (result.items.length === 0) break;
+      } while (restaurantsById.size < totalCount);
+
+      if (
+        !active ||
+        sessionTokenRef.current !== requestToken ||
+        restaurantOptionsRequestGenerationRef.current !== requestGeneration
+      ) return;
+
+      const activeRestaurantOptions = Array.from(restaurantsById.values())
+        .filter((restaurant) => restaurant.isActive);
+
+      setRestaurantOptions(activeRestaurantOptions);
+      setCreateEmployeeForm((currentForm) => {
+        if (
+          !currentForm.restaurantId ||
+          activeRestaurantOptions.some((restaurant) => restaurant.id === currentForm.restaurantId)
+        ) {
+          return currentForm;
+        }
+
+        return { ...currentForm, restaurantId: "" };
+      });
+      setRestaurantOptionsError(null);
+    };
+
+    loadRestaurantOptions().catch((err) => {
+      if (
+        err?.name === "AbortError" ||
+        !active ||
+        sessionTokenRef.current !== requestToken ||
+        restaurantOptionsRequestGenerationRef.current !== requestGeneration
+      ) return;
+      setRestaurantOptionsError(err.message || "Не удалось загрузить список ресторанов");
+    }).finally(() => {
+      if (
+        active &&
+        sessionTokenRef.current === requestToken &&
+        restaurantOptionsRequestGenerationRef.current === requestGeneration
+      ) {
+        setRestaurantOptionsLoading(false);
+        setRestaurantOptionsRetrying(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [session?.token, permissions.canCreate, restaurantOptionsRefreshKey]);
 
   const handleLogout = () => {
+    sessionTokenRef.current = null;
+    restaurantsRequestGenerationRef.current += 1;
+    employeesRequestGenerationRef.current += 1;
+    restaurantOptionsRequestGenerationRef.current += 1;
+    restaurantsSearchChangePendingRef.current = false;
+    employeesSearchChangePendingRef.current = false;
+    deleteRestaurantRequestRef.current = null;
+    deleteEmployeeRequestRef.current = null;
     clearSession();
     setSession(null);
     setUsers([]);
+    setUsersLoading(false);
     setRestaurants([]);
+    setRestaurantsTotalCount(0);
+    setRestaurantsPage(1);
+    setRestaurantsPageSize(20);
+    setRestaurantsSearchInput("");
+    setRestaurantsDebouncedSearch("");
+    setRestaurantsSortBy("createdAt");
+    setRestaurantsSortDirection("asc");
+    setRestaurantsLoading(false);
+    setRestaurantsError(null);
     setEmployees([]);
+    setEmployeesTotalCount(0);
+    setEmployeesPage(1);
+    setEmployeesPageSize(20);
+    setEmployeesSearchInput("");
+    setEmployeesDebouncedSearch("");
+    setEmployeesSortBy("lastName");
+    setEmployeesSortDirection("asc");
+    setEmployeesLoading(false);
+    setEmployeesError(null);
+    setRestaurantOptions([]);
+    setRestaurantOptionsLoading(false);
+    setRestaurantOptionsError(null);
+    setRestaurantOptionsRetrying(false);
+    setCreateUserLoading(false);
+    setCreateRestaurantLoading(false);
+    setCreateEmployeeLoading(false);
     setUsername("");
     setPassword("");
     setDeleteUserLoading(null);
@@ -550,6 +1071,17 @@ function App() {
                   restaurants={restaurants}
                   restaurantsLoading={restaurantsLoading}
                   restaurantsError={restaurantsError}
+                  totalCount={restaurantsTotalCount}
+                  page={restaurantsPage}
+                  pageSize={restaurantsPageSize}
+                  searchInput={restaurantsSearchInput}
+                  sortBy={restaurantsSortBy}
+                  sortDirection={restaurantsSortDirection}
+                  onSearchChange={handleRestaurantsSearchChange}
+                  onSortByChange={handleRestaurantsSortByChange}
+                  onSortDirectionChange={handleRestaurantsSortDirectionChange}
+                  onPageChange={handleRestaurantsPageChange}
+                  onPageSizeChange={handleRestaurantsPageSizeChange}
                   createRestaurantForm={createRestaurantForm}
                   onCreateRestaurantFieldChange={handleCreateRestaurantFieldChange}
                   onCreateRestaurant={handleCreateRestaurant}
@@ -570,6 +1102,17 @@ function App() {
                   employees={employees}
                   employeesLoading={employeesLoading}
                   employeesError={employeesError}
+                  totalCount={employeesTotalCount}
+                  page={employeesPage}
+                  pageSize={employeesPageSize}
+                  searchInput={employeesSearchInput}
+                  sortBy={employeesSortBy}
+                  sortDirection={employeesSortDirection}
+                  onSearchChange={handleEmployeesSearchChange}
+                  onSortByChange={handleEmployeesSortByChange}
+                  onSortDirectionChange={handleEmployeesSortDirectionChange}
+                  onPageChange={handleEmployeesPageChange}
+                  onPageSizeChange={handleEmployeesPageSizeChange}
                   createEmployeeForm={createEmployeeForm}
                   onCreateEmployeeFieldChange={handleCreateEmployeeFieldChange}
                   onCreateEmployee={handleCreateEmployee}
@@ -579,7 +1122,11 @@ function App() {
                   onDeleteEmployee={handleDeleteEmployee}
                   deleteEmployeeLoadingId={deleteEmployeeLoading}
                   deleteEmployeeError={deleteEmployeeError}
-                  restaurants={restaurants}
+                  restaurantOptions={restaurantOptions}
+                  restaurantOptionsLoading={restaurantOptionsLoading}
+                  restaurantOptionsError={restaurantOptionsError}
+                  restaurantOptionsRetrying={restaurantOptionsRetrying}
+                  onRetryRestaurantOptions={handleRetryRestaurantOptions}
                   permissions={permissions}
                 />
               }
