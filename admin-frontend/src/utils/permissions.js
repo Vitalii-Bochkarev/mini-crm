@@ -5,7 +5,9 @@ export function getUiPermissions(role) {
 
   return {
     canCreate: canWrite,
-    canEdit: canWrite,
+    canEditUsers: canWrite,
+    canEditRestaurants: canWrite,
+    canEditEmployees: canWrite,
     canDelete: role === ROLES.ADMINISTRATOR,
   };
 }

@@ -1,6 +1,7 @@
 import React from "react";
 import CreateEmployeeForm from "../components/CreateEmployeeForm";
 import EmployeesTable from "../components/EmployeesTable";
+import Modal from "../components/Modal";
 import PaginationControls from "../components/PaginationControls";
 
 function EmployeesPage({
@@ -32,6 +33,16 @@ function EmployeesPage({
   restaurantOptionsError,
   restaurantOptionsRetrying,
   onRetryRestaurantOptions,
+  editEmployee,
+  editEmployeeForm,
+  editEmployeeRestaurantOptions,
+  editEmployeeRestaurantError,
+  onEditEmployee,
+  onEditEmployeeFieldChange,
+  onEditEmployeeSubmit,
+  onCloseEditEmployee,
+  editEmployeeLoading,
+  editEmployeeError,
   permissions,
 }) {
   return (
@@ -139,9 +150,11 @@ function EmployeesPage({
           employees={employees}
           loading={employeesLoading}
           error={employeesError}
+          onEditEmployee={onEditEmployee}
           onDeleteEmployee={onDeleteEmployee}
           deleteLoadingId={deleteEmployeeLoadingId}
           deleteError={deleteEmployeeError}
+          canEdit={permissions.canEditEmployees}
           canDelete={permissions.canDelete}
         />
 
@@ -154,6 +167,31 @@ function EmployeesPage({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+
+      {editEmployee && (
+        <Modal
+          title="Изменение сотрудника"
+          loading={editEmployeeLoading}
+          onClose={onCloseEditEmployee}
+        >
+          <CreateEmployeeForm
+            mode="edit"
+            embedded
+            formData={editEmployeeForm}
+            onFieldChange={onEditEmployeeFieldChange}
+            onSubmit={onEditEmployeeSubmit}
+            onCancel={onCloseEditEmployee}
+            loading={editEmployeeLoading}
+            error={editEmployeeError}
+            restaurants={editEmployeeRestaurantOptions}
+            restaurantsLoading={restaurantOptionsLoading}
+            restaurantsError={editEmployeeRestaurantError}
+            restaurantsRetrying={restaurantOptionsRetrying}
+            onRetryRestaurants={onRetryRestaurantOptions}
+            currentRestaurantId={editEmployee.restaurantId}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

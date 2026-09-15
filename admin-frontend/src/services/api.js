@@ -272,6 +272,18 @@ export async function createRestaurant(restaurantData) {
   return data;
 }
 
+export async function updateRestaurant(restaurantId, restaurantData) {
+  const data = await request(`${API_URL}/restaurants/${restaurantId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(restaurantData),
+  });
+
+  return data;
+}
+
 export async function deleteRestaurant(restaurantId) {
   const data = await request(`${API_URL}/restaurants/${restaurantId}`, {
     method: "DELETE",
@@ -313,6 +325,18 @@ export async function getRestaurantEmployees(restaurantId) {
 export async function createEmployee(employeeData) {
   const data = await request(`${API_URL}/employees`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(employeeData),
+  });
+
+  return data;
+}
+
+export async function updateEmployee(employeeId, employeeData) {
+  const data = await request(`${API_URL}/employees/${employeeId}`, {
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },

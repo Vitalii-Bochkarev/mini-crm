@@ -1,5 +1,6 @@
 import React from "react";
 import CreateRestaurantForm from "../components/CreateRestaurantForm";
+import Modal from "../components/Modal";
 import PaginationControls from "../components/PaginationControls";
 import RestaurantsTable from "../components/RestaurantsTable";
 
@@ -27,6 +28,14 @@ function RestaurantsPage({
   onDeleteRestaurant,
   deleteRestaurantLoadingId,
   deleteRestaurantError,
+  editRestaurant,
+  editRestaurantForm,
+  onEditRestaurant,
+  onEditRestaurantFieldChange,
+  onEditRestaurantSubmit,
+  onCloseEditRestaurant,
+  editRestaurantLoading,
+  editRestaurantError,
   permissions,
 }) {
   return (
@@ -128,9 +137,11 @@ function RestaurantsPage({
           restaurants={restaurants}
           loading={restaurantsLoading}
           error={restaurantsError}
+          onEditRestaurant={onEditRestaurant}
           onDeleteRestaurant={onDeleteRestaurant}
           deleteLoadingId={deleteRestaurantLoadingId}
           deleteError={deleteRestaurantError}
+          canEdit={permissions.canEditRestaurants}
           canDelete={permissions.canDelete}
         />
 
@@ -143,6 +154,25 @@ function RestaurantsPage({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+
+      {editRestaurant && (
+        <Modal
+          title="Изменение ресторана"
+          loading={editRestaurantLoading}
+          onClose={onCloseEditRestaurant}
+        >
+          <CreateRestaurantForm
+            mode="edit"
+            embedded
+            formData={editRestaurantForm}
+            onFieldChange={onEditRestaurantFieldChange}
+            onSubmit={onEditRestaurantSubmit}
+            onCancel={onCloseEditRestaurant}
+            loading={editRestaurantLoading}
+            error={editRestaurantError}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

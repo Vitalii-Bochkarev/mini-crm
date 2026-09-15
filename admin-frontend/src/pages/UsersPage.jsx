@@ -61,7 +61,7 @@ function UsersPage({
           loading={usersLoading}
           error={usersError}
           currentUserId={currentUserId}
-          canEdit={permissions.canEdit}
+          canEdit={permissions.canEditUsers}
           canDelete={permissions.canDelete}
           onDeleteUser={onDeleteUser}
           onEditUser={onEditUser}

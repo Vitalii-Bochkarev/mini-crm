@@ -1,7 +1,7 @@
 import React from "react";
 import { formatCurrency } from "../utils/formatters";
 
-function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoadingId, deleteError, canDelete }) {
+function EmployeesTable({ employees, loading, error, onEditEmployee, onDeleteEmployee, deleteLoadingId, deleteError, canEdit, canDelete }) {
   if (loading) {
     return (
       <div
@@ -81,7 +81,7 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Зарплата</th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Ресторан</th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Активен</th>
-              {canDelete && (
+              {(canEdit || canDelete) && (
                 <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>Действия</th>
               )}
             </tr>
@@ -102,25 +102,48 @@ function EmployeesTable({ employees, loading, error, onDeleteEmployee, deleteLoa
                   <td style={{ padding: "12px 16px", color: employee.isActive ? "#34d399" : "#fca5a5" }}>
                     {employee.isActive ? "Да" : "Нет"}
                   </td>
-                  {canDelete && (
+                  {(canEdit || canDelete) && (
                     <td style={{ padding: "12px 16px" }}>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteEmployee(employee)}
-                        disabled={deleteInProgress}
-                        style={{
-                          border: "none",
-                          borderRadius: 8,
-                          padding: "8px 12px",
-                          background: deleteInProgress ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
-                          color: "#fff",
-                          fontWeight: 700,
-                          cursor: deleteInProgress ? "not-allowed" : "pointer",
-                          opacity: deleteInProgress ? 0.75 : 1,
-                        }}
-                      >
-                        {isDeleting ? "Удаление..." : "Удалить"}
-                      </button>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => onEditEmployee(employee)}
+                            disabled={deleteInProgress}
+                            style={{
+                              border: "none",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              background: deleteInProgress ? "rgba(107, 114, 128, 0.35)" : "#2563eb",
+                              color: "#fff",
+                              fontWeight: 700,
+                              cursor: deleteInProgress ? "not-allowed" : "pointer",
+                              opacity: deleteInProgress ? 0.75 : 1,
+                            }}
+                          >
+                            Изменить
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteEmployee(employee)}
+                            disabled={deleteInProgress}
+                            style={{
+                              border: "none",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              background: deleteInProgress ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
+                              color: "#fff",
+                              fontWeight: 700,
+                              cursor: deleteInProgress ? "not-allowed" : "pointer",
+                              opacity: deleteInProgress ? 0.75 : 1,
+                            }}
+                          >
+                            {isDeleting ? "Удаление..." : "Удалить"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
