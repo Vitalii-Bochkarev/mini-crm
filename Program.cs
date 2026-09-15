@@ -121,9 +121,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // Database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "Connection string 'DefaultConnection' is not configured.");
+
 builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseNpgsql(
-        "Host=localhost;Port=5432;Database=adminpanel;Username=postgres;Password=postgres123"));
+    options.UseNpgsql(connectionString));
 
 // Services
 builder.Services.AddScoped<AdminRepository>();
