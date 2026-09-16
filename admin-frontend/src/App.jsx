@@ -25,6 +25,7 @@ function App() {
   const [usersError, setUsersError] = useState(null);
   const [deleteUserLoading, setDeleteUserLoading] = useState(null);
   const [deleteUserError, setDeleteUserError] = useState("");
+  const [userToDelete, setUserToDelete] = useState(null);
   const [editUser, setEditUser] = useState(null);
   const [editUserForm, setEditUserForm] = useState({
     username: "",
@@ -120,6 +121,8 @@ function App() {
     [currentUser?.role],
   );
   const sessionTokenRef = useRef(session?.token || null);
+  const sessionGenerationRef = useRef(0);
+  const deleteUserRequestRef = useRef(null);
   const restaurantsRequestGenerationRef = useRef(0);
   const employeesRequestGenerationRef = useRef(0);
   const restaurantOptionsRequestGenerationRef = useRef(0);
@@ -186,21 +189,25 @@ function App() {
             ? "Настройки"
             : "Обзор";
 
-  const loadUsers = async (expectedToken = sessionTokenRef.current) => {
+  const loadUsers = async (expectedToken = sessionTokenRef.current, isOperationCurrent = () => true) => {
     if (!expectedToken) return;
+    const expectedGeneration = sessionGenerationRef.current;
+    const isCurrent = () => sessionTokenRef.current === expectedToken &&
+      sessionGenerationRef.current === expectedGeneration && isOperationCurrent();
+    if (!isCurrent()) return;
 
     setUsersLoading(true);
     setUsersError(null);
 
     try {
       const fetchedUsers = await getUsers();
-      if (sessionTokenRef.current !== expectedToken) return;
+      if (!isCurrent()) return;
       setUsers(fetchedUsers);
     } catch (err) {
-      if (sessionTokenRef.current !== expectedToken) return;
+      if (!isCurrent()) return;
       setUsersError(err.message || "Не удалось загрузить пользователей");
     } finally {
-      if (sessionTokenRef.current === expectedToken) {
+      if (isCurrent()) {
         setUsersLoading(false);
       }
     }
@@ -214,6 +221,11 @@ function App() {
     try {
       const authenticatedSession = await login(username, password);
       sessionTokenRef.current = authenticatedSession.token;
+      sessionGenerationRef.current += 1;
+      deleteUserRequestRef.current = null;
+      setUserToDelete(null);
+      setDeleteUserLoading(null);
+      setDeleteUserError("");
       deleteRestaurantRequestRef.current = null;
       deleteEmployeeRequestRef.current = null;
       setRestaurantToDelete(null);
@@ -327,25 +339,49 @@ function App() {
     }
   };
 
-  const handleDeleteUser = async (user) => {
+  const openDeleteUser = (user) => {
+    if (!permissions.canDelete || !sessionTokenRef.current || deleteUserRequestRef.current !== null) return;
+    if (user.id === currentUser?.id) return;
+    setDeleteUserError("");
+    setUserToDelete({ id: user.id, username: user.username });
+  };
+
+  const closeDeleteUser = () => {
+    if (deleteUserRequestRef.current !== null) return;
+    setUserToDelete(null);
+    setDeleteUserError("");
+  };
+
+  const handleDeleteUser = async () => {
+    if (!permissions.canDelete || !sessionTokenRef.current || !userToDelete || deleteUserRequestRef.current !== null) return;
+    const user = userToDelete;
     if (user.id === currentUser?.id) {
       setDeleteUserError("Нельзя удалить пользователя, под которым выполнен вход.");
       return;
     }
 
     const requestToken = sessionTokenRef.current;
+    const requestGeneration = sessionGenerationRef.current;
+    const deleteRequest = Symbol("deleteUser");
+    deleteUserRequestRef.current = deleteRequest;
+    const isCurrent = () => sessionTokenRef.current === requestToken &&
+      sessionGenerationRef.current === requestGeneration &&
+      deleteUserRequestRef.current === deleteRequest;
     setDeleteUserError("");
     setDeleteUserLoading(user.id);
 
     try {
       await deleteUser(user.id);
-      if (sessionTokenRef.current !== requestToken) return;
-      await loadUsers();
+      if (!isCurrent()) return;
+      setUserToDelete(null);
+      setDeleteUserError("");
+      await loadUsers(requestToken, isCurrent);
     } catch (err) {
-      if (sessionTokenRef.current !== requestToken) return;
+      if (!isCurrent()) return;
       setDeleteUserError(err.message || "Не удалось удалить пользователя");
     } finally {
-      if (sessionTokenRef.current === requestToken) {
+      if (isCurrent()) {
+        deleteUserRequestRef.current = null;
         setDeleteUserLoading(null);
       }
     }
@@ -908,6 +944,10 @@ function App() {
   }, [employeesSearchInput, employeesDebouncedSearch]);
 
   useEffect(() => setUnauthorizedHandler(() => {
+    sessionGenerationRef.current += 1;
+    deleteUserRequestRef.current = null;
+    setUserToDelete(null);
+    setDeleteUserError("");
     setRestaurantToDelete(null);
     setEmployeeToDelete(null);
     setDeleteRestaurantError("");
@@ -1193,6 +1233,9 @@ function App() {
   }, [session?.token, permissions.canCreate, restaurantOptionsRefreshKey]);
 
   const handleLogout = () => {
+    sessionGenerationRef.current += 1;
+    deleteUserRequestRef.current = null;
+    setUserToDelete(null);
     setRestaurantToDelete(null);
     setEmployeeToDelete(null);
     sessionTokenRef.current = null;
@@ -1368,7 +1411,10 @@ function App() {
                   usersError={usersError}
                   currentUserId={currentUser.id}
                   permissions={permissions}
-                  onDeleteUser={handleDeleteUser}
+                  onDeleteUser={openDeleteUser}
+                  userToDelete={userToDelete}
+                  onConfirmDeleteUser={handleDeleteUser}
+                  onCloseDeleteUser={closeDeleteUser}
                   onEditUser={openEditUser}
                   deleteUserLoadingId={deleteUserLoading}
                   deleteUserError={deleteUserError}

@@ -152,7 +152,7 @@ function UsersTable({
                         {canDelete && (
                           <button
                             type="button"
-                            onClick={() => onDeleteUser(user)}
+                            onClick={(event) => onDeleteUser(user, event.currentTarget)}
                             disabled={isCurrentUser || isDeleting}
                             title={isCurrentUser ? "Нельзя удалить текущего пользователя" : "Удалить пользователя"}
                             style={{

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import CreateUserForm from "../components/CreateUserForm";
 import UsersTable from "../components/UsersTable";
 import { ROLE_OPTIONS } from "../utils/formatters";
@@ -10,6 +11,9 @@ function UsersPage({
   currentUserId,
   permissions,
   onDeleteUser,
+  userToDelete,
+  onConfirmDeleteUser,
+  onCloseDeleteUser,
   onEditUser,
   deleteUserLoadingId,
   deleteUserError,
@@ -27,6 +31,9 @@ function UsersPage({
   editUserError,
   onCloseEditUser,
 }) {
+  const deleteTriggerRef = useRef(null);
+  const listFocusRef = useRef(null);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {permissions.canCreate && (
@@ -50,7 +57,7 @@ function UsersPage({
         }}
       >
         <div style={{ marginBottom: 20 }}>
-          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Пользователи системы</h3>
+          <h3 ref={listFocusRef} tabIndex={-1} style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Пользователи системы</h3>
           <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
             Управляйте пользователями системы и их доступом.
           </p>
@@ -63,12 +70,27 @@ function UsersPage({
           currentUserId={currentUserId}
           canEdit={permissions.canEditUsers}
           canDelete={permissions.canDelete}
-          onDeleteUser={onDeleteUser}
+          onDeleteUser={(user, trigger) => {
+            deleteTriggerRef.current = trigger;
+            onDeleteUser(user);
+          }}
           onEditUser={onEditUser}
           deleteUserLoadingId={deleteUserLoadingId}
-          deleteUserError={deleteUserError}
         />
       </div>
+
+      {userToDelete && (
+        <ConfirmDeleteDialog
+          title="Удаление пользователя"
+          name={userToDelete.username}
+          loading={deleteUserLoadingId !== null}
+          error={deleteUserError}
+          onConfirm={onConfirmDeleteUser}
+          onClose={onCloseDeleteUser}
+          returnFocusRef={deleteTriggerRef}
+          fallbackFocusRef={listFocusRef}
+        />
+      )}
 
       {editUser && (
         <div
