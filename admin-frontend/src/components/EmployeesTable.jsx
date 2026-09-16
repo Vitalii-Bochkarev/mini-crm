@@ -127,7 +127,7 @@ function EmployeesTable({ employees, loading, error, onEditEmployee, onDeleteEmp
                         {canDelete && (
                           <button
                             type="button"
-                            onClick={() => onDeleteEmployee(employee)}
+                            onClick={(event) => onDeleteEmployee(employee, event.currentTarget)}
                             disabled={deleteInProgress}
                             style={{
                               border: "none",

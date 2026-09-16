@@ -7,6 +7,7 @@ const VALID_ROLES = new Set(Object.values(ROLES));
 
 let unauthorizedHandler = null;
 let unauthorizedHandled = false;
+let sessionGeneration = 0;
 
 export class ApiError extends Error {
   constructor(message, status = 0, validationErrors = null) {
@@ -40,12 +41,14 @@ export function saveSession(session) {
   }
 
   localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+  sessionGeneration += 1;
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
   unauthorizedHandled = false;
   return session;
 }
 
 export function clearSession() {
+  sessionGeneration += 1;
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(USER_STORAGE_KEY);
 }
@@ -130,6 +133,7 @@ function toPagedResult(data, fallbackPage, fallbackPageSize) {
 }
 
 async function request(url, options = {}, requiresAuth = true) {
+  const requestSessionGeneration = sessionGeneration;
   const headers = new Headers(options.headers);
   let requestToken = null;
 
@@ -164,7 +168,7 @@ async function request(url, options = {}, requiresAuth = true) {
   }
 
   if (!res.ok) {
-    if (requiresAuth && res.status === 401) {
+    if (requiresAuth && res.status === 401 && requestSessionGeneration === sessionGeneration) {
       notifyUnauthorized(requestToken);
     }
 

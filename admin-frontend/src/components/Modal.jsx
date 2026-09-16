@@ -1,28 +1,52 @@
 import { useEffect, useId, useRef } from "react";
 
-function Modal({ title, children, loading = false, onClose }) {
+function Modal({ title, children, loading = false, onClose, initialFocusRef, returnFocusRef, fallbackFocusRef }) {
   const titleId = useId();
   const dialogRef = useRef(null);
   const previousFocusRef = useRef(null);
 
   useEffect(() => {
-    previousFocusRef.current = document.activeElement;
+    previousFocusRef.current = returnFocusRef?.current || document.activeElement;
+    const fallbackFocus = fallbackFocusRef?.current;
 
     const firstField = dialogRef.current?.querySelector(
       "input:not([disabled]), select:not([disabled]), textarea:not([disabled])",
     );
     const closeButton = dialogRef.current?.querySelector("button[data-modal-close]");
-    (firstField || closeButton)?.focus();
+    (initialFocusRef?.current || firstField || closeButton)?.focus();
 
     return () => {
       if (previousFocusRef.current instanceof HTMLElement && previousFocusRef.current.isConnected) {
         previousFocusRef.current.focus();
+      } else if (fallbackFocus?.isConnected) {
+        fallbackFocus.focus();
       }
     };
-  }, []);
+  }, [initialFocusRef, returnFocusRef, fallbackFocusRef]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (event.key === "Tab") {
+        const dialog = dialogRef.current;
+        const focusable = Array.from(dialog?.querySelectorAll(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ) || []).filter((element) => element.getClientRects().length > 0);
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!first) {
+          event.preventDefault();
+          dialog?.focus();
+        } else if (!focusable.includes(document.activeElement)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
       if (event.key === "Escape" && !loading) {
         onClose();
       }
@@ -55,6 +79,7 @@ function Modal({ title, children, loading = false, onClose }) {
       <div
         ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby={titleId}
         style={{

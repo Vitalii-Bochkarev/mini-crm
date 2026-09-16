@@ -66,6 +66,7 @@ function App() {
   const [createRestaurantSuccess, setCreateRestaurantSuccess] = useState("");
   const [deleteRestaurantLoading, setDeleteRestaurantLoading] = useState(null);
   const [deleteRestaurantError, setDeleteRestaurantError] = useState("");
+  const [restaurantToDelete, setRestaurantToDelete] = useState(null);
   const [editRestaurant, setEditRestaurant] = useState(null);
   const [editRestaurantForm, setEditRestaurantForm] = useState({
     name: "",
@@ -99,6 +100,7 @@ function App() {
   const [createEmployeeSuccess, setCreateEmployeeSuccess] = useState("");
   const [deleteEmployeeLoading, setDeleteEmployeeLoading] = useState(null);
   const [deleteEmployeeError, setDeleteEmployeeError] = useState("");
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [editEmployee, setEditEmployee] = useState(null);
   const [editEmployeeForm, setEditEmployeeForm] = useState({
     firstName: "",
@@ -212,6 +214,14 @@ function App() {
     try {
       const authenticatedSession = await login(username, password);
       sessionTokenRef.current = authenticatedSession.token;
+      deleteRestaurantRequestRef.current = null;
+      deleteEmployeeRequestRef.current = null;
+      setRestaurantToDelete(null);
+      setEmployeeToDelete(null);
+      setDeleteRestaurantLoading(null);
+      setDeleteEmployeeLoading(null);
+      setDeleteRestaurantError("");
+      setDeleteEmployeeError("");
       restaurantsRequestGenerationRef.current += 1;
       employeesRequestGenerationRef.current += 1;
       restaurantOptionsRequestGenerationRef.current += 1;
@@ -446,8 +456,21 @@ function App() {
     }
   };
 
-  const handleDeleteRestaurant = async (restaurant) => {
+  const openDeleteRestaurant = (restaurant) => {
+    if (!permissions.canDelete || !sessionTokenRef.current || deleteRestaurantRequestRef.current !== null) return;
+    setDeleteRestaurantError("");
+    setRestaurantToDelete({ id: restaurant.id, name: restaurant.name });
+  };
+
+  const closeDeleteRestaurant = () => {
     if (deleteRestaurantRequestRef.current !== null) return;
+    setRestaurantToDelete(null);
+    setDeleteRestaurantError("");
+  };
+
+  const handleDeleteRestaurant = async () => {
+    if (!permissions.canDelete || !sessionTokenRef.current || !restaurantToDelete || deleteRestaurantRequestRef.current !== null) return;
+    const restaurant = restaurantToDelete;
 
     const deleteRequest = Symbol("deleteRestaurant");
     deleteRestaurantRequestRef.current = deleteRequest;
@@ -462,6 +485,8 @@ function App() {
         deleteRestaurantRequestRef.current !== deleteRequest
       ) return;
 
+      setRestaurantToDelete(null);
+      setDeleteRestaurantError("");
       restaurantsRequestGenerationRef.current += 1;
       setRestaurantsLoading(true);
       setRestaurantsRefreshKey((value) => value + 1);
@@ -634,8 +659,21 @@ function App() {
     }
   };
 
-  const handleDeleteEmployee = async (employee) => {
+  const openDeleteEmployee = (employee) => {
+    if (!permissions.canDelete || !sessionTokenRef.current || deleteEmployeeRequestRef.current !== null) return;
+    setDeleteEmployeeError("");
+    setEmployeeToDelete({ id: employee.id, firstName: employee.firstName, lastName: employee.lastName });
+  };
+
+  const closeDeleteEmployee = () => {
     if (deleteEmployeeRequestRef.current !== null) return;
+    setEmployeeToDelete(null);
+    setDeleteEmployeeError("");
+  };
+
+  const handleDeleteEmployee = async () => {
+    if (!permissions.canDelete || !sessionTokenRef.current || !employeeToDelete || deleteEmployeeRequestRef.current !== null) return;
+    const employee = employeeToDelete;
 
     const deleteRequest = Symbol("deleteEmployee");
     deleteEmployeeRequestRef.current = deleteRequest;
@@ -650,6 +688,8 @@ function App() {
         deleteEmployeeRequestRef.current !== deleteRequest
       ) return;
 
+      setEmployeeToDelete(null);
+      setDeleteEmployeeError("");
       employeesRequestGenerationRef.current += 1;
       setEmployeesLoading(true);
       setEmployeesRefreshKey((value) => value + 1);
@@ -868,6 +908,10 @@ function App() {
   }, [employeesSearchInput, employeesDebouncedSearch]);
 
   useEffect(() => setUnauthorizedHandler(() => {
+    setRestaurantToDelete(null);
+    setEmployeeToDelete(null);
+    setDeleteRestaurantError("");
+    setDeleteEmployeeError("");
     sessionTokenRef.current = null;
     restaurantsRequestGenerationRef.current += 1;
     employeesRequestGenerationRef.current += 1;
@@ -1149,6 +1193,8 @@ function App() {
   }, [session?.token, permissions.canCreate, restaurantOptionsRefreshKey]);
 
   const handleLogout = () => {
+    setRestaurantToDelete(null);
+    setEmployeeToDelete(null);
     sessionTokenRef.current = null;
     restaurantsRequestGenerationRef.current += 1;
     employeesRequestGenerationRef.current += 1;
@@ -1366,7 +1412,10 @@ function App() {
                   createRestaurantLoading={createRestaurantLoading}
                   createRestaurantError={createRestaurantError}
                   createRestaurantSuccess={createRestaurantSuccess}
-                  onDeleteRestaurant={handleDeleteRestaurant}
+                  onDeleteRestaurant={openDeleteRestaurant}
+                  restaurantToDelete={restaurantToDelete}
+                  onConfirmDeleteRestaurant={handleDeleteRestaurant}
+                  onCloseDeleteRestaurant={closeDeleteRestaurant}
                   deleteRestaurantLoadingId={deleteRestaurantLoading}
                   deleteRestaurantError={deleteRestaurantError}
                   editRestaurant={editRestaurant}
@@ -1405,7 +1454,10 @@ function App() {
                   createEmployeeLoading={createEmployeeLoading}
                   createEmployeeError={createEmployeeError}
                   createEmployeeSuccess={createEmployeeSuccess}
-                  onDeleteEmployee={handleDeleteEmployee}
+                  onDeleteEmployee={openDeleteEmployee}
+                  employeeToDelete={employeeToDelete}
+                  onConfirmDeleteEmployee={handleDeleteEmployee}
+                  onCloseDeleteEmployee={closeDeleteEmployee}
                   deleteEmployeeLoadingId={deleteEmployeeLoading}
                   deleteEmployeeError={deleteEmployeeError}
                   restaurantOptions={restaurantOptions}

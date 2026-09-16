@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import CreateRestaurantForm from "../components/CreateRestaurantForm";
 import Modal from "../components/Modal";
 import PaginationControls from "../components/PaginationControls";
@@ -26,6 +27,9 @@ function RestaurantsPage({
   createRestaurantError,
   createRestaurantSuccess,
   onDeleteRestaurant,
+  restaurantToDelete,
+  onConfirmDeleteRestaurant,
+  onCloseDeleteRestaurant,
   deleteRestaurantLoadingId,
   deleteRestaurantError,
   editRestaurant,
@@ -38,6 +42,9 @@ function RestaurantsPage({
   editRestaurantError,
   permissions,
 }) {
+  const deleteTriggerRef = useRef(null);
+  const listFocusRef = useRef(null);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {permissions.canCreate && (
@@ -79,6 +86,7 @@ function RestaurantsPage({
           <label style={{ flex: "1 1 260px", color: "#9ca3af", fontSize: 13 }}>
             Поиск
             <input
+              ref={listFocusRef}
               type="search"
               value={searchInput}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -138,9 +146,11 @@ function RestaurantsPage({
           loading={restaurantsLoading}
           error={restaurantsError}
           onEditRestaurant={onEditRestaurant}
-          onDeleteRestaurant={onDeleteRestaurant}
+          onDeleteRestaurant={(record, trigger) => {
+            deleteTriggerRef.current = trigger;
+            onDeleteRestaurant(record);
+          }}
           deleteLoadingId={deleteRestaurantLoadingId}
-          deleteError={deleteRestaurantError}
           canEdit={permissions.canEditRestaurants}
           canDelete={permissions.canDelete}
         />
@@ -154,6 +164,19 @@ function RestaurantsPage({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+
+      {restaurantToDelete && (
+        <ConfirmDeleteDialog
+          title="Удаление ресторана"
+          name={restaurantToDelete.name}
+          loading={deleteRestaurantLoadingId !== null}
+          error={deleteRestaurantError}
+          onConfirm={onConfirmDeleteRestaurant}
+          onClose={onCloseDeleteRestaurant}
+          returnFocusRef={deleteTriggerRef}
+          fallbackFocusRef={listFocusRef}
+        />
+      )}
 
       {editRestaurant && (
         <Modal

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import CreateEmployeeForm from "../components/CreateEmployeeForm";
 import EmployeesTable from "../components/EmployeesTable";
 import Modal from "../components/Modal";
@@ -26,6 +27,9 @@ function EmployeesPage({
   createEmployeeError,
   createEmployeeSuccess,
   onDeleteEmployee,
+  employeeToDelete,
+  onConfirmDeleteEmployee,
+  onCloseDeleteEmployee,
   deleteEmployeeLoadingId,
   deleteEmployeeError,
   restaurantOptions,
@@ -45,6 +49,9 @@ function EmployeesPage({
   editEmployeeError,
   permissions,
 }) {
+  const deleteTriggerRef = useRef(null);
+  const listFocusRef = useRef(null);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {permissions.canCreate && (
@@ -91,6 +98,7 @@ function EmployeesPage({
           <label style={{ flex: "1 1 260px", color: "#9ca3af", fontSize: 13 }}>
             Поиск
             <input
+              ref={listFocusRef}
               type="search"
               value={searchInput}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -151,9 +159,11 @@ function EmployeesPage({
           loading={employeesLoading}
           error={employeesError}
           onEditEmployee={onEditEmployee}
-          onDeleteEmployee={onDeleteEmployee}
+          onDeleteEmployee={(record, trigger) => {
+            deleteTriggerRef.current = trigger;
+            onDeleteEmployee(record);
+          }}
           deleteLoadingId={deleteEmployeeLoadingId}
-          deleteError={deleteEmployeeError}
           canEdit={permissions.canEditEmployees}
           canDelete={permissions.canDelete}
         />
@@ -167,6 +177,19 @@ function EmployeesPage({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+
+      {employeeToDelete && (
+        <ConfirmDeleteDialog
+          title="Удаление сотрудника"
+          name={`${employeeToDelete.firstName} ${employeeToDelete.lastName}`}
+          loading={deleteEmployeeLoadingId !== null}
+          error={deleteEmployeeError}
+          onConfirm={onConfirmDeleteEmployee}
+          onClose={onCloseDeleteEmployee}
+          returnFocusRef={deleteTriggerRef}
+          fallbackFocusRef={listFocusRef}
+        />
+      )}
 
       {editEmployee && (
         <Modal

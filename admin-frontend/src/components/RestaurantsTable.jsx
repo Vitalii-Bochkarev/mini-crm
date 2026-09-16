@@ -125,7 +125,7 @@ function RestaurantsTable({ restaurants, loading, error, onEditRestaurant, onDel
                         {canDelete && (
                           <button
                             type="button"
-                            onClick={() => onDeleteRestaurant(restaurant)}
+                            onClick={(event) => onDeleteRestaurant(restaurant, event.currentTarget)}
                             disabled={deleteInProgress}
                             style={{
                               border: "none",
