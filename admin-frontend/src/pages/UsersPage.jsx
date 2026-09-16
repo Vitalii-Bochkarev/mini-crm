@@ -1,6 +1,7 @@
-import React, { useRef } from "react";
+import React, { useId, useRef } from "react";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import CreateUserForm from "../components/CreateUserForm";
+import Modal from "../components/Modal";
 import UsersTable from "../components/UsersTable";
 import { ROLE_OPTIONS } from "../utils/formatters";
 
@@ -31,6 +32,8 @@ function UsersPage({
   editUserError,
   onCloseEditUser,
 }) {
+  const editFormId = useId();
+  const editTriggerRef = useRef(null);
   const deleteTriggerRef = useRef(null);
   const listFocusRef = useRef(null);
 
@@ -74,7 +77,10 @@ function UsersPage({
             deleteTriggerRef.current = trigger;
             onDeleteUser(user);
           }}
-          onEditUser={onEditUser}
+          onEditUser={(user, trigger) => {
+            editTriggerRef.current = trigger;
+            onEditUser(user);
+          }}
           deleteUserLoadingId={deleteUserLoadingId}
         />
       </div>
@@ -93,81 +99,41 @@ function UsersPage({
       )}
 
       {editUser && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.82)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-            zIndex: 30,
-          }}
+        <Modal
+          title="Изменение пользователя"
+          loading={editUserLoading}
+          onClose={onCloseEditUser}
+          returnFocusRef={editTriggerRef}
+          fallbackFocusRef={listFocusRef}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 520,
-              borderRadius: 20,
-              background: "linear-gradient(180deg, #111827 0%, #0b1220 100%)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: "0 24px 80px rgba(15, 23, 42, 0.7)",
-              padding: 24,
-            }}
-          >
+          {editUserError && (
             <div
+              role="alert"
+              aria-live="assertive"
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
+                marginBottom: 16,
+                padding: 12,
+                borderRadius: 10,
+                color: "#fecaca",
+                backgroundColor: "rgba(220, 38, 38, 0.12)",
               }}
             >
-              <div>
-                <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Изменение пользователя</h3>
-                <p style={{ color: "#9ca3af", margin: "6px 0 0 0", fontSize: 14 }}>
-                  Измените имя пользователя, электронную почту и роль.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onCloseEditUser}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  color: "#cbd5e1",
-                  fontSize: 20,
-                  cursor: "pointer",
-                }}
-              >
-                ×
-              </button>
+              {editUserError}
             </div>
+          )}
 
-            {editUserError && (
-              <div
-                style={{
-                  marginBottom: 16,
-                  padding: 12,
-                  borderRadius: 10,
-                  color: "#fecaca",
-                  backgroundColor: "rgba(220, 38, 38, 0.12)",
-                }}
-              >
-                {editUserError}
-              </div>
-            )}
-
-            <form onSubmit={onEditUserSubmit}>
+          <form onSubmit={onEditUserSubmit}>
+            <fieldset disabled={editUserLoading} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
               <div style={{ display: "grid", gap: 16 }}>
                 <div>
                   <label
+                    htmlFor={`${editFormId}-username`}
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
                     Имя пользователя
                   </label>
                   <input
+                    id={`${editFormId}-username`}
                     type="text"
                     value={editUserForm.username}
                     onChange={(e) => onEditUserFieldChange("username", e.target.value)}
@@ -185,11 +151,13 @@ function UsersPage({
 
                 <div>
                   <label
+                    htmlFor={`${editFormId}-email`}
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
                     Электронная почта
                   </label>
                   <input
+                    id={`${editFormId}-email`}
                     type="email"
                     value={editUserForm.email}
                     onChange={(e) => onEditUserFieldChange("email", e.target.value)}
@@ -207,11 +175,13 @@ function UsersPage({
 
                 <div>
                   <label
+                    htmlFor={`${editFormId}-role`}
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
                     Роль
                   </label>
                   <select
+                    id={`${editFormId}-role`}
                     value={editUserForm.role}
                     onChange={(e) => onEditUserFieldChange("role", e.target.value)}
                     disabled={editUser.id === currentUserId}
@@ -237,9 +207,11 @@ function UsersPage({
 
                 <div>
                   <label
+                    htmlFor={`${editFormId}-is-active`}
                     style={{ display: "flex", alignItems: "center", color: "#9ca3af", fontSize: 13, cursor: "pointer" }}
                   >
                     <input
+                      id={`${editFormId}-is-active`}
                       type="checkbox"
                       checked={editUserForm.isActive}
                       onChange={(e) => onEditUserFieldChange("isActive", e.target.checked)}
@@ -251,11 +223,13 @@ function UsersPage({
 
                 <div>
                   <label
+                    htmlFor={`${editFormId}-password`}
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
                     Новый пароль
                   </label>
                   <input
+                    id={`${editFormId}-password`}
                     type="password"
                     value={editUserForm.password}
                     onChange={(e) => onEditUserFieldChange("password", e.target.value)}
@@ -280,13 +254,15 @@ function UsersPage({
                 <button
                   type="button"
                   onClick={onCloseEditUser}
+                  disabled={editUserLoading}
                   style={{
                     border: "1px solid rgba(255,255,255,0.08)",
                     borderRadius: 10,
                     padding: "10px 16px",
                     background: "transparent",
                     color: "#e6eef8",
-                    cursor: "pointer",
+                    cursor: editUserLoading ? "not-allowed" : "pointer",
+                    opacity: editUserLoading ? 0.75 : 1,
                   }}
                 >
                   Отмена
@@ -308,9 +284,9 @@ function UsersPage({
                   {editUserLoading ? "Сохранение..." : "Сохранить изменения"}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
+            </fieldset>
+          </form>
+        </Modal>
       )}
     </div>
   );

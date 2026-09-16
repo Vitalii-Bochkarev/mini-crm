@@ -123,6 +123,7 @@ function App() {
   const sessionTokenRef = useRef(session?.token || null);
   const sessionGenerationRef = useRef(0);
   const deleteUserRequestRef = useRef(null);
+  const updateUserRequestRef = useRef(null);
   const restaurantsRequestGenerationRef = useRef(0);
   const employeesRequestGenerationRef = useRef(0);
   const restaurantOptionsRequestGenerationRef = useRef(0);
@@ -222,6 +223,9 @@ function App() {
       const authenticatedSession = await login(username, password);
       sessionTokenRef.current = authenticatedSession.token;
       sessionGenerationRef.current += 1;
+      updateUserRequestRef.current = null;
+      closeEditUser();
+      setEditUserLoading(false);
       deleteUserRequestRef.current = null;
       setUserToDelete(null);
       setDeleteUserLoading(null);
@@ -388,6 +392,11 @@ function App() {
   };
 
   const openEditUser = (user) => {
+    if (
+      !permissions.canEditUsers ||
+      !sessionTokenRef.current ||
+      updateUserRequestRef.current !== null
+    ) return;
     setEditUserError("");
     setEditUser({
       id: user.id,
@@ -748,6 +757,7 @@ function App() {
   };
 
   const closeEditUser = () => {
+    if (updateUserRequestRef.current !== null) return;
     setEditUser(null);
     setEditUserError("");
     setEditUserForm({
@@ -760,6 +770,7 @@ function App() {
   };
 
   const handleEditUserFieldChange = (field, value) => {
+    if (updateUserRequestRef.current !== null) return;
     setEditUserForm((prev) => ({
       ...prev,
       [field]: value,
@@ -768,8 +779,20 @@ function App() {
 
   const handleEditUserSubmit = async (e) => {
     e.preventDefault();
-    if (!editUser) return;
+    if (
+      !editUser ||
+      !permissions.canEditUsers ||
+      !sessionTokenRef.current ||
+      updateUserRequestRef.current !== null
+    ) return;
+
     const requestToken = sessionTokenRef.current;
+    const requestGeneration = sessionGenerationRef.current;
+    const updateRequest = Symbol("updateUser");
+    updateUserRequestRef.current = updateRequest;
+    const isCurrent = () => sessionTokenRef.current === requestToken &&
+      sessionGenerationRef.current === requestGeneration &&
+      updateUserRequestRef.current === updateRequest;
 
     setEditUserError("");
     setEditUserLoading(true);
@@ -782,7 +805,7 @@ function App() {
         role: editUserForm.role,
         password: editUserForm.password || null,
       });
-      if (sessionTokenRef.current !== requestToken) return;
+      if (!isCurrent()) return;
 
       if (editUser.id === currentUser.id) {
         const updatedSession = saveSession({
@@ -797,13 +820,16 @@ function App() {
         setSession(updatedSession);
       }
 
-      closeEditUser();
-      await loadUsers();
+      setEditUser(null);
+      setEditUserError("");
+      setEditUserForm({ username: "", email: "", isActive: true, role: ROLES.ADMINISTRATOR, password: "" });
+      await loadUsers(requestToken, isCurrent);
     } catch (err) {
-      if (sessionTokenRef.current !== requestToken) return;
+      if (!isCurrent()) return;
       setEditUserError(err.message || "Не удалось изменить пользователя");
     } finally {
-      if (sessionTokenRef.current === requestToken) {
+      if (isCurrent()) {
+        updateUserRequestRef.current = null;
         setEditUserLoading(false);
       }
     }
@@ -944,6 +970,9 @@ function App() {
   }, [employeesSearchInput, employeesDebouncedSearch]);
 
   useEffect(() => setUnauthorizedHandler(() => {
+    updateUserRequestRef.current = null;
+    setEditUserError("");
+    setEditUserForm({ username: "", email: "", isActive: true, role: ROLES.ADMINISTRATOR, password: "" });
     sessionGenerationRef.current += 1;
     deleteUserRequestRef.current = null;
     setUserToDelete(null);
@@ -1233,6 +1262,7 @@ function App() {
   }, [session?.token, permissions.canCreate, restaurantOptionsRefreshKey]);
 
   const handleLogout = () => {
+    updateUserRequestRef.current = null;
     sessionGenerationRef.current += 1;
     deleteUserRequestRef.current = null;
     setUserToDelete(null);

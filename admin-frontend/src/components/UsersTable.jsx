@@ -135,7 +135,7 @@ function UsersTable({
                         {canEdit && (
                           <button
                             type="button"
-                            onClick={() => onEditUser(user)}
+                            onClick={(event) => onEditUser(user, event.currentTarget)}
                             style={{
                               border: "none",
                               borderRadius: 8,
