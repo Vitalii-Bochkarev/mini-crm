@@ -56,11 +56,7 @@ builder.Services.AddCors(options =>
 });
 
 // JWT settings
-var jwtSettings = new JwtSettings(
-    Issuer: builder.Configuration["Jwt:Issuer"] ?? "MyProject2",
-    Audience: builder.Configuration["Jwt:Audience"] ?? "MyProject2",
-    SecretKey: builder.Configuration["Jwt:SecretKey"] ?? "SuperSecretJwtKey_ChangeThis_AtLeast32Chars!",
-    ExpireMinutes: int.TryParse(builder.Configuration["Jwt:ExpireMinutes"], out var expireMinutes) ? expireMinutes : 60);
+var jwtSettings = GetValidatedJwtSettings(builder.Configuration);
 
 builder.Services.AddSingleton(jwtSettings);
 
@@ -142,9 +138,19 @@ using (var scope = app.Services.CreateScope())
 
     if (!dbContext.AdminUsers.Any())
     {
-        var (superHash, superSalt) = PasswordHasher.HashPassword("SuperAdmin123!");
-        var (jdoeHash, jdoeSalt) = PasswordHasher.HashPassword("Editor123!");
-        var (asmithHash, asmithSalt) = PasswordHasher.HashPassword("Viewer123!");
+        var superAdminPassword = GetRequiredConfigurationValue(
+            builder.Configuration,
+            "SeedUsers:SuperAdminPassword");
+        var editorPassword = GetRequiredConfigurationValue(
+            builder.Configuration,
+            "SeedUsers:EditorPassword");
+        var viewerPassword = GetRequiredConfigurationValue(
+            builder.Configuration,
+            "SeedUsers:ViewerPassword");
+
+        var (superHash, superSalt) = PasswordHasher.HashPassword(superAdminPassword);
+        var (jdoeHash, jdoeSalt) = PasswordHasher.HashPassword(editorPassword);
+        var (asmithHash, asmithSalt) = PasswordHasher.HashPassword(viewerPassword);
 
         dbContext.AdminUsers.AddRange(
             new AdminUser(Guid.NewGuid(), "superadmin", "superadmin@example.com", true, "Administrator")
@@ -764,6 +770,47 @@ static string GenerateJwtToken(AdminUser user, JwtSettings settings)
         signingCredentials: credentials);
 
     return new JwtSecurityTokenHandler().WriteToken(token);
+}
+
+static JwtSettings GetValidatedJwtSettings(IConfiguration configuration)
+{
+    const string issuerKey = "Jwt:Issuer";
+    const string audienceKey = "Jwt:Audience";
+    const string secretKeyName = "Jwt:SecretKey";
+    const string expireMinutesKey = "Jwt:ExpireMinutes";
+    const int minimumSecretKeyBytes = 32;
+    const int maximumExpireMinutes = 1440;
+
+    var issuer = GetRequiredConfigurationValue(configuration, issuerKey);
+    var audience = GetRequiredConfigurationValue(configuration, audienceKey);
+    var secretKey = GetRequiredConfigurationValue(configuration, secretKeyName);
+
+    if (Encoding.UTF8.GetByteCount(secretKey) < minimumSecretKeyBytes)
+    {
+        throw new InvalidOperationException(
+            $"Configuration key '{secretKeyName}' must be at least {minimumSecretKeyBytes} bytes.");
+    }
+
+    var expireMinutesValue = GetRequiredConfigurationValue(configuration, expireMinutesKey);
+    if (!int.TryParse(expireMinutesValue, out var expireMinutes) ||
+        expireMinutes is <= 0 or > maximumExpireMinutes)
+    {
+        throw new InvalidOperationException(
+            $"Configuration key '{expireMinutesKey}' must be an integer between 1 and {maximumExpireMinutes}.");
+    }
+
+    return new JwtSettings(issuer, audience, secretKey, expireMinutes);
+}
+
+static string GetRequiredConfigurationValue(IConfiguration configuration, string key)
+{
+    var value = configuration[key];
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new InvalidOperationException($"Configuration key '{key}' is required.");
+    }
+
+    return value;
 }
 
 internal sealed record JwtSettings(string Issuer, string Audience, string SecretKey, int ExpireMinutes);
