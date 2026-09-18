@@ -25,6 +25,7 @@ function EmployeesPage({
   onCreateEmployee,
   createEmployeeLoading,
   createEmployeeError,
+  createEmployeeFieldErrors,
   createEmployeeSuccess,
   onDeleteEmployee,
   employeeToDelete,
@@ -47,6 +48,7 @@ function EmployeesPage({
   onCloseEditEmployee,
   editEmployeeLoading,
   editEmployeeError,
+  editEmployeeFieldErrors,
   permissions,
 }) {
   const deleteTriggerRef = useRef(null);
@@ -61,6 +63,7 @@ function EmployeesPage({
           onSubmit={onCreateEmployee}
           loading={createEmployeeLoading}
           error={createEmployeeError}
+          fieldErrors={createEmployeeFieldErrors}
           success={createEmployeeSuccess}
           restaurants={restaurantOptions}
           restaurantsLoading={restaurantOptionsLoading}
@@ -206,6 +209,7 @@ function EmployeesPage({
             onCancel={onCloseEditEmployee}
             loading={editEmployeeLoading}
             error={editEmployeeError}
+            fieldErrors={editEmployeeFieldErrors}
             restaurants={editEmployeeRestaurantOptions}
             restaurantsLoading={restaurantOptionsLoading}
             restaurantsError={editEmployeeRestaurantError}

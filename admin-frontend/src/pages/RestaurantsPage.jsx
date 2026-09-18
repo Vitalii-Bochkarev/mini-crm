@@ -25,6 +25,7 @@ function RestaurantsPage({
   onCreateRestaurant,
   createRestaurantLoading,
   createRestaurantError,
+  createRestaurantFieldErrors,
   createRestaurantSuccess,
   onDeleteRestaurant,
   restaurantToDelete,
@@ -40,6 +41,7 @@ function RestaurantsPage({
   onCloseEditRestaurant,
   editRestaurantLoading,
   editRestaurantError,
+  editRestaurantFieldErrors,
   permissions,
 }) {
   const deleteTriggerRef = useRef(null);
@@ -54,6 +56,7 @@ function RestaurantsPage({
           onSubmit={onCreateRestaurant}
           loading={createRestaurantLoading}
           error={createRestaurantError}
+          fieldErrors={createRestaurantFieldErrors}
           success={createRestaurantSuccess}
         />
       )}
@@ -193,6 +196,7 @@ function RestaurantsPage({
             onCancel={onCloseEditRestaurant}
             loading={editRestaurantLoading}
             error={editRestaurantError}
+            fieldErrors={editRestaurantFieldErrors}
           />
         </Modal>
       )}

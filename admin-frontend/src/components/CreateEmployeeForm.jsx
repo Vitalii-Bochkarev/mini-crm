@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
+import FieldErrorMessages from "./FieldErrorMessages";
 
 function CreateEmployeeForm({
   formData,
@@ -6,6 +7,7 @@ function CreateEmployeeForm({
   onSubmit,
   loading,
   error,
+  fieldErrors = {},
   success,
   restaurants = [],
   restaurantsLoading,
@@ -25,6 +27,22 @@ function CreateEmployeeForm({
   const positionId = `${formId}-position`;
   const salaryId = `${formId}-salary`;
   const restaurantId = `${formId}-restaurant`;
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const positionRef = useRef(null);
+  const salaryRef = useRef(null);
+  const restaurantRef = useRef(null);
+
+  useEffect(() => {
+    const firstInvalidField = [
+      ["firstName", firstNameRef],
+      ["lastName", lastNameRef],
+      ["position", positionRef],
+      ["salary", salaryRef],
+      ["restaurantId", restaurantRef],
+    ].find(([field, ref]) => fieldErrors[field]?.length && !ref.current?.disabled);
+    firstInvalidField?.[1].current?.focus();
+  }, [fieldErrors]);
 
   return (
     <div
@@ -49,6 +67,7 @@ function CreateEmployeeForm({
 
       {error && (
         <div
+          role="alert"
           style={{
             marginBottom: 16,
             padding: 12,
@@ -81,10 +100,13 @@ function CreateEmployeeForm({
             Имя *
           </label>
           <input
+            ref={firstNameRef}
             id={firstNameId}
             type="text"
             value={formData.firstName}
             onChange={(e) => onFieldChange("firstName", e.target.value)}
+            aria-invalid={fieldErrors.firstName?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.firstName?.length ? `${firstNameId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -96,6 +118,7 @@ function CreateEmployeeForm({
             }}
             required
           />
+          <FieldErrorMessages id={`${firstNameId}-errors`} messages={fieldErrors.firstName} />
         </div>
 
         <div>
@@ -103,10 +126,13 @@ function CreateEmployeeForm({
             Фамилия *
           </label>
           <input
+            ref={lastNameRef}
             id={lastNameId}
             type="text"
             value={formData.lastName}
             onChange={(e) => onFieldChange("lastName", e.target.value)}
+            aria-invalid={fieldErrors.lastName?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.lastName?.length ? `${lastNameId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -118,6 +144,7 @@ function CreateEmployeeForm({
             }}
             required
           />
+          <FieldErrorMessages id={`${lastNameId}-errors`} messages={fieldErrors.lastName} />
         </div>
 
         <div>
@@ -125,10 +152,13 @@ function CreateEmployeeForm({
             Должность *
           </label>
           <input
+            ref={positionRef}
             id={positionId}
             type="text"
             value={formData.position}
             onChange={(e) => onFieldChange("position", e.target.value)}
+            aria-invalid={fieldErrors.position?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.position?.length ? `${positionId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -140,6 +170,7 @@ function CreateEmployeeForm({
             }}
             required
           />
+          <FieldErrorMessages id={`${positionId}-errors`} messages={fieldErrors.position} />
         </div>
 
         <div>
@@ -147,11 +178,14 @@ function CreateEmployeeForm({
             Зарплата
           </label>
           <input
+            ref={salaryRef}
             id={salaryId}
             type="number"
             step="0.01"
             value={formData.salary}
             onChange={(e) => onFieldChange("salary", parseFloat(e.target.value) || 0)}
+            aria-invalid={fieldErrors.salary?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.salary?.length ? `${salaryId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -162,6 +196,7 @@ function CreateEmployeeForm({
               padding: "12px 14px",
             }}
           />
+          <FieldErrorMessages id={`${salaryId}-errors`} messages={fieldErrors.salary} />
         </div>
 
         <div style={{ gridColumn: "1 / -1" }}>
@@ -169,9 +204,12 @@ function CreateEmployeeForm({
             Ресторан *
           </label>
           <select
+            ref={restaurantRef}
             id={restaurantId}
             value={formData.restaurantId}
             onChange={(e) => onFieldChange("restaurantId", e.target.value)}
+            aria-invalid={fieldErrors.restaurantId?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.restaurantId?.length ? `${restaurantId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -201,6 +239,7 @@ function CreateEmployeeForm({
               </option>
             ))}
           </select>
+          <FieldErrorMessages id={`${restaurantId}-errors`} messages={fieldErrors.restaurantId} />
           {(restaurantsError || restaurantsRetrying) && (
             <div style={{ marginTop: 8 }}>
               {restaurantsError && (

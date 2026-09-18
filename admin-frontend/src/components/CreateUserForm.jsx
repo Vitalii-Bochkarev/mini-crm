@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useId, useRef } from "react";
+import FieldErrorMessages from "./FieldErrorMessages";
 import { ROLE_OPTIONS } from "../utils/formatters";
 
 function CreateUserForm({
@@ -7,8 +8,24 @@ function CreateUserForm({
   onSubmit,
   loading,
   error,
+  fieldErrors = {},
   success,
 }) {
+  const formId = useId();
+  const usernameRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const roleRef = useRef(null);
+  useEffect(() => {
+    const firstInvalidField = [
+      ["username", usernameRef],
+      ["email", emailRef],
+      ["password", passwordRef],
+      ["role", roleRef],
+    ].find(([field, ref]) => fieldErrors[field]?.length && !ref.current?.disabled);
+    firstInvalidField?.[1].current?.focus();
+  }, [fieldErrors]);
+
   return (
     <div
       style={{
@@ -28,7 +45,7 @@ function CreateUserForm({
       </div>
 
       {error && (
-        <div style={{ color: "#fecaca", marginBottom: 12, fontSize: 14 }}>
+        <div role="alert" style={{ color: "#fecaca", marginBottom: 12, fontSize: 14 }}>
           {error}
         </div>
       )}
@@ -48,14 +65,18 @@ function CreateUserForm({
           }}
         >
           <div>
-            <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
+            <label htmlFor={`${formId}-username`} style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
               Имя пользователя
             </label>
             <input
+              ref={usernameRef}
+              id={`${formId}-username`}
               value={formData.username}
               onChange={(e) => onFieldChange("username", e.target.value)}
               placeholder="Введите имя пользователя"
               required
+              aria-invalid={fieldErrors.username?.length ? "true" : undefined}
+              aria-describedby={fieldErrors.username?.length ? `${formId}-username-errors` : undefined}
               style={{
                 width: "100%",
                 padding: "12px 14px",
@@ -68,18 +89,23 @@ function CreateUserForm({
                 boxSizing: "border-box",
               }}
             />
+            <FieldErrorMessages id={`${formId}-username-errors`} messages={fieldErrors.username} />
           </div>
 
           <div>
-            <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
+            <label htmlFor={`${formId}-email`} style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
               Электронная почта
             </label>
             <input
+              ref={emailRef}
+              id={`${formId}-email`}
               type="email"
               value={formData.email}
               onChange={(e) => onFieldChange("email", e.target.value)}
               placeholder="Введите электронную почту"
               required
+              aria-invalid={fieldErrors.email?.length ? "true" : undefined}
+              aria-describedby={fieldErrors.email?.length ? `${formId}-email-errors` : undefined}
               style={{
                 width: "100%",
                 padding: "12px 14px",
@@ -92,18 +118,23 @@ function CreateUserForm({
                 boxSizing: "border-box",
               }}
             />
+            <FieldErrorMessages id={`${formId}-email-errors`} messages={fieldErrors.email} />
           </div>
 
           <div>
-            <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
+            <label htmlFor={`${formId}-password`} style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
               Пароль
             </label>
             <input
+              ref={passwordRef}
+              id={`${formId}-password`}
               type="password"
               value={formData.password}
               onChange={(e) => onFieldChange("password", e.target.value)}
               placeholder="Введите пароль"
               required
+              aria-invalid={fieldErrors.password?.length ? "true" : undefined}
+              aria-describedby={fieldErrors.password?.length ? `${formId}-password-errors` : undefined}
               style={{
                 width: "100%",
                 padding: "12px 14px",
@@ -116,15 +147,20 @@ function CreateUserForm({
                 boxSizing: "border-box",
               }}
             />
+            <FieldErrorMessages id={`${formId}-password-errors`} messages={fieldErrors.password} />
           </div>
 
           <div>
-            <label style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
+            <label htmlFor={`${formId}-role`} style={{ color: "#9ca3af", fontSize: 13, display: "block", marginBottom: 8 }}>
               Роль
             </label>
             <select
+              ref={roleRef}
+              id={`${formId}-role`}
               value={formData.role}
               onChange={(e) => onFieldChange("role", e.target.value)}
+              aria-invalid={fieldErrors.role?.length ? "true" : undefined}
+              aria-describedby={fieldErrors.role?.length ? `${formId}-role-errors` : undefined}
               style={{
                 width: "100%",
                 padding: "12px 14px",
@@ -143,6 +179,7 @@ function CreateUserForm({
                 </option>
               ))}
             </select>
+            <FieldErrorMessages id={`${formId}-role-errors`} messages={fieldErrors.role} />
           </div>
         </div>
 

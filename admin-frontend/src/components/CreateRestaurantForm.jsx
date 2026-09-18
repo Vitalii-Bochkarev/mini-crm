@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
+import FieldErrorMessages from "./FieldErrorMessages";
 
 function CreateRestaurantForm({
   formData,
@@ -6,6 +7,7 @@ function CreateRestaurantForm({
   onSubmit,
   loading,
   error,
+  fieldErrors = {},
   success,
   mode = "create",
   embedded = false,
@@ -15,6 +17,16 @@ function CreateRestaurantForm({
   const formId = useId();
   const nameId = `${formId}-name`;
   const cityId = `${formId}-city`;
+  const nameRef = useRef(null);
+  const cityRef = useRef(null);
+
+  useEffect(() => {
+    const firstInvalidField = [
+      ["name", nameRef],
+      ["city", cityRef],
+    ].find(([field, ref]) => fieldErrors[field]?.length && !ref.current?.disabled);
+    firstInvalidField?.[1].current?.focus();
+  }, [fieldErrors]);
 
   return (
     <div
@@ -39,6 +51,7 @@ function CreateRestaurantForm({
 
       {error && (
         <div
+          role="alert"
           style={{
             marginBottom: 16,
             padding: 12,
@@ -71,10 +84,13 @@ function CreateRestaurantForm({
             Название ресторана
           </label>
           <input
+            ref={nameRef}
             id={nameId}
             type="text"
             value={formData.name}
             onChange={(e) => onFieldChange("name", e.target.value)}
+            aria-invalid={fieldErrors.name?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.name?.length ? `${nameId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -85,6 +101,7 @@ function CreateRestaurantForm({
               padding: "12px 14px",
             }}
           />
+          <FieldErrorMessages id={`${nameId}-errors`} messages={fieldErrors.name} />
         </div>
 
         <div>
@@ -92,10 +109,13 @@ function CreateRestaurantForm({
             Город
           </label>
           <input
+            ref={cityRef}
             id={cityId}
             type="text"
             value={formData.city}
             onChange={(e) => onFieldChange("city", e.target.value)}
+            aria-invalid={fieldErrors.city?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.city?.length ? `${cityId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -106,6 +126,7 @@ function CreateRestaurantForm({
               padding: "12px 14px",
             }}
           />
+          <FieldErrorMessages id={`${cityId}-errors`} messages={fieldErrors.city} />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

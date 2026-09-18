@@ -1,6 +1,7 @@
-import React, { useId, useRef } from "react";
+import React, { useEffect, useId, useRef } from "react";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import CreateUserForm from "../components/CreateUserForm";
+import FieldErrorMessages from "../components/FieldErrorMessages";
 import Modal from "../components/Modal";
 import UsersTable from "../components/UsersTable";
 import { ROLE_OPTIONS } from "../utils/formatters";
@@ -23,6 +24,7 @@ function UsersPage({
   onCreateUser,
   createUserLoading,
   createUserError,
+  createUserFieldErrors,
   createUserSuccess,
   editUser,
   editUserForm,
@@ -30,12 +32,27 @@ function UsersPage({
   onEditUserSubmit,
   editUserLoading,
   editUserError,
+  editUserFieldErrors,
   onCloseEditUser,
 }) {
   const editFormId = useId();
   const editTriggerRef = useRef(null);
   const deleteTriggerRef = useRef(null);
   const listFocusRef = useRef(null);
+  const editUsernameRef = useRef(null);
+  const editEmailRef = useRef(null);
+  const editRoleRef = useRef(null);
+  const editPasswordRef = useRef(null);
+
+  useEffect(() => {
+    const firstInvalidField = [
+      ["username", editUsernameRef],
+      ["email", editEmailRef],
+      ["role", editRoleRef],
+      ["password", editPasswordRef],
+    ].find(([field, ref]) => editUserFieldErrors[field]?.length && !ref.current?.disabled);
+    firstInvalidField?.[1].current?.focus();
+  }, [editUserFieldErrors]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -46,6 +63,7 @@ function UsersPage({
           onSubmit={onCreateUser}
           loading={createUserLoading}
           error={createUserError}
+          fieldErrors={createUserFieldErrors}
           success={createUserSuccess}
         />
       )}
@@ -109,7 +127,6 @@ function UsersPage({
           {editUserError && (
             <div
               role="alert"
-              aria-live="assertive"
               style={{
                 marginBottom: 16,
                 padding: 12,
@@ -133,10 +150,13 @@ function UsersPage({
                     Имя пользователя
                   </label>
                   <input
+                    ref={editUsernameRef}
                     id={`${editFormId}-username`}
                     type="text"
                     value={editUserForm.username}
                     onChange={(e) => onEditUserFieldChange("username", e.target.value)}
+                    aria-invalid={editUserFieldErrors.username?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.username?.length ? `${editFormId}-username-errors` : undefined}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -147,6 +167,7 @@ function UsersPage({
                       padding: "12px 14px",
                     }}
                   />
+                  <FieldErrorMessages id={`${editFormId}-username-errors`} messages={editUserFieldErrors.username} />
                 </div>
 
                 <div>
@@ -157,10 +178,13 @@ function UsersPage({
                     Электронная почта
                   </label>
                   <input
+                    ref={editEmailRef}
                     id={`${editFormId}-email`}
                     type="email"
                     value={editUserForm.email}
                     onChange={(e) => onEditUserFieldChange("email", e.target.value)}
+                    aria-invalid={editUserFieldErrors.email?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.email?.length ? `${editFormId}-email-errors` : undefined}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -171,6 +195,7 @@ function UsersPage({
                       padding: "12px 14px",
                     }}
                   />
+                  <FieldErrorMessages id={`${editFormId}-email-errors`} messages={editUserFieldErrors.email} />
                 </div>
 
                 <div>
@@ -181,10 +206,13 @@ function UsersPage({
                     Роль
                   </label>
                   <select
+                    ref={editRoleRef}
                     id={`${editFormId}-role`}
                     value={editUserForm.role}
                     onChange={(e) => onEditUserFieldChange("role", e.target.value)}
                     disabled={editUser.id === currentUserId}
+                    aria-invalid={editUserFieldErrors.role?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.role?.length ? `${editFormId}-role-errors` : undefined}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -203,6 +231,7 @@ function UsersPage({
                       </option>
                     ))}
                   </select>
+                  <FieldErrorMessages id={`${editFormId}-role-errors`} messages={editUserFieldErrors.role} />
                 </div>
 
                 <div>
@@ -229,11 +258,14 @@ function UsersPage({
                     Новый пароль
                   </label>
                   <input
+                    ref={editPasswordRef}
                     id={`${editFormId}-password`}
                     type="password"
                     value={editUserForm.password}
                     onChange={(e) => onEditUserFieldChange("password", e.target.value)}
                     autoComplete="new-password"
+                    aria-invalid={editUserFieldErrors.password?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.password?.length ? `${editFormId}-password-errors` : undefined}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -244,6 +276,7 @@ function UsersPage({
                       padding: "12px 14px",
                     }}
                   />
+                  <FieldErrorMessages id={`${editFormId}-password-errors`} messages={editUserFieldErrors.password} />
                   <p style={{ color: "#9ca3af", margin: "6px 0 0", fontSize: 12 }}>
                     Оставьте поле пустым, чтобы сохранить текущий пароль.
                   </p>

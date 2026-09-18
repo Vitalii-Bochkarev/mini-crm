@@ -1,4 +1,4 @@
-import { ROLES } from "../utils/formatters";
+import { ROLES } from "../utils/formatters.js";
 
 const API_URL = "http://localhost:5269";
 const TOKEN_STORAGE_KEY = "token";
@@ -10,12 +10,26 @@ let unauthorizedHandled = false;
 let sessionGeneration = 0;
 
 export class ApiError extends Error {
-  constructor(message, status = 0, validationErrors = null) {
+  constructor(message, status = 0, fieldErrors = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.validationErrors = validationErrors;
+    this.fieldErrors = fieldErrors;
+    this.validationErrors = fieldErrors;
   }
+}
+
+function copyFieldErrors(errors) {
+  if (!errors || typeof errors !== "object" || Array.isArray(errors)) {
+    return null;
+  }
+
+  return Object.fromEntries(
+    Object.entries(errors).map(([field, messages]) => [
+      field,
+      Array.isArray(messages) ? [...messages] : messages,
+    ]),
+  );
 }
 
 function isStoredUserValid(user) {
@@ -176,13 +190,14 @@ async function request(url, options = {}, requiresAuth = true) {
       data?.errors && typeof data.errors === "object" && !Array.isArray(data.errors)
         ? data.errors
         : null;
+    const fieldErrors = res.status === 400 ? copyFieldErrors(validationErrors) : null;
     const validationMessages = getValidationMessages(validationErrors);
     const msg = validationMessages.length > 0
       ? validationMessages.join(" ")
       : data?.error ||
         data?.message ||
         `Не удалось выполнить запрос. Сервер вернул HTTP ${res.status}.`;
-    throw new ApiError(msg, res.status, validationErrors);
+    throw new ApiError(msg, res.status, fieldErrors);
   }
 
   return data;

@@ -9,7 +9,12 @@ import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 import { login, getUsers, createUser, deleteUser, updateUser, getRestaurants, createRestaurant, updateRestaurant, deleteRestaurant, getEmployees, createEmployee, updateEmployee, deleteEmployee, clearSession, getSavedSession, saveSession, setUnauthorizedHandler } from "./services/api";
 import { ROLES } from "./utils/formatters";
+import { clearFieldError, getFormErrorState } from "./utils/formErrors";
 import { getUiPermissions } from "./utils/permissions";
+
+const USER_VALIDATION_FIELDS = ["username", "email", "role", "password"];
+const RESTAURANT_VALIDATION_FIELDS = ["name", "city"];
+const EMPLOYEE_VALIDATION_FIELDS = ["firstName", "lastName", "position", "salary", "restaurantId"];
 
 function App() {
   const location = useLocation();
@@ -36,6 +41,7 @@ function App() {
   });
   const [editUserLoading, setEditUserLoading] = useState(false);
   const [editUserError, setEditUserError] = useState("");
+  const [editUserFieldErrors, setEditUserFieldErrors] = useState({});
   const [createUserForm, setCreateUserForm] = useState({
     username: "",
     email: "",
@@ -44,6 +50,7 @@ function App() {
   });
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [createUserError, setCreateUserError] = useState(null);
+  const [createUserFieldErrors, setCreateUserFieldErrors] = useState({});
   const [createUserSuccess, setCreateUserSuccess] = useState("");
 
   const [restaurants, setRestaurants] = useState([]);
@@ -64,6 +71,7 @@ function App() {
   });
   const [createRestaurantLoading, setCreateRestaurantLoading] = useState(false);
   const [createRestaurantError, setCreateRestaurantError] = useState(null);
+  const [createRestaurantFieldErrors, setCreateRestaurantFieldErrors] = useState({});
   const [createRestaurantSuccess, setCreateRestaurantSuccess] = useState("");
   const [deleteRestaurantLoading, setDeleteRestaurantLoading] = useState(null);
   const [deleteRestaurantError, setDeleteRestaurantError] = useState("");
@@ -76,6 +84,7 @@ function App() {
   });
   const [editRestaurantLoading, setEditRestaurantLoading] = useState(false);
   const [editRestaurantError, setEditRestaurantError] = useState("");
+  const [editRestaurantFieldErrors, setEditRestaurantFieldErrors] = useState({});
 
   const [employees, setEmployees] = useState([]);
   const [employeesTotalCount, setEmployeesTotalCount] = useState(0);
@@ -98,6 +107,7 @@ function App() {
   });
   const [createEmployeeLoading, setCreateEmployeeLoading] = useState(false);
   const [createEmployeeError, setCreateEmployeeError] = useState(null);
+  const [createEmployeeFieldErrors, setCreateEmployeeFieldErrors] = useState({});
   const [createEmployeeSuccess, setCreateEmployeeSuccess] = useState("");
   const [deleteEmployeeLoading, setDeleteEmployeeLoading] = useState(null);
   const [deleteEmployeeError, setDeleteEmployeeError] = useState("");
@@ -113,6 +123,7 @@ function App() {
   });
   const [editEmployeeLoading, setEditEmployeeLoading] = useState(false);
   const [editEmployeeError, setEditEmployeeError] = useState("");
+  const [editEmployeeFieldErrors, setEditEmployeeFieldErrors] = useState({});
 
   const currentUser = session?.user || null;
   const loggedIn = Boolean(session);
@@ -223,6 +234,12 @@ function App() {
       const authenticatedSession = await login(username, password);
       sessionTokenRef.current = authenticatedSession.token;
       sessionGenerationRef.current += 1;
+      setCreateUserFieldErrors({});
+      setEditUserFieldErrors({});
+      setCreateRestaurantFieldErrors({});
+      setEditRestaurantFieldErrors({});
+      setCreateEmployeeFieldErrors({});
+      setEditEmployeeFieldErrors({});
       updateUserRequestRef.current = null;
       closeEditUser();
       setEditUserLoading(false);
@@ -259,6 +276,7 @@ function App() {
   };
 
   const handleCreateUserFieldChange = (field, value) => {
+    setCreateUserFieldErrors((currentErrors) => clearFieldError(currentErrors, field));
     setCreateUserForm((prev) => ({
       ...prev,
       [field]: value,
@@ -266,6 +284,7 @@ function App() {
   };
 
   const handleCreateRestaurantFieldChange = (field, value) => {
+    setCreateRestaurantFieldErrors((currentErrors) => clearFieldError(currentErrors, field));
     setCreateRestaurantForm((prev) => ({
       ...prev,
       [field]: value,
@@ -273,6 +292,7 @@ function App() {
   };
 
   const handleCreateEmployeeFieldChange = (field, value) => {
+    setCreateEmployeeFieldErrors((currentErrors) => clearFieldError(currentErrors, field));
     setCreateEmployeeForm((prev) => ({
       ...prev,
       [field]: value,
@@ -282,26 +302,33 @@ function App() {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     const requestToken = sessionTokenRef.current;
+    const requestGeneration = sessionGenerationRef.current;
+    const isCurrent = () => sessionTokenRef.current === requestToken &&
+      sessionGenerationRef.current === requestGeneration;
     setCreateUserError(null);
+    setCreateUserFieldErrors({});
     setCreateUserSuccess("");
     setCreateUserLoading(true);
 
     try {
       await createUser(createUserForm);
-      if (sessionTokenRef.current !== requestToken) return;
+      if (!isCurrent()) return;
       setCreateUserSuccess("Пользователь успешно создан.");
+      setCreateUserFieldErrors({});
       setCreateUserForm({
         username: "",
         email: "",
         password: "",
         role: ROLES.ADMINISTRATOR,
       });
-      await loadUsers();
+      await loadUsers(requestToken, isCurrent);
     } catch (err) {
-      if (sessionTokenRef.current !== requestToken) return;
-      setCreateUserError(err.message || "Не удалось создать пользователя");
+      if (!isCurrent()) return;
+      const nextErrors = getFormErrorState(err, USER_VALIDATION_FIELDS);
+      setCreateUserFieldErrors(nextErrors.fieldErrors);
+      setCreateUserError(nextErrors.formError || null);
     } finally {
-      if (sessionTokenRef.current === requestToken) {
+      if (isCurrent()) {
         setCreateUserLoading(false);
       }
     }
@@ -310,14 +337,19 @@ function App() {
   const handleCreateRestaurant = async (e) => {
     e.preventDefault();
     const requestToken = sessionTokenRef.current;
+    const requestGeneration = sessionGenerationRef.current;
+    const isCurrent = () => sessionTokenRef.current === requestToken &&
+      sessionGenerationRef.current === requestGeneration;
     setCreateRestaurantError(null);
+    setCreateRestaurantFieldErrors({});
     setCreateRestaurantSuccess("");
     setCreateRestaurantLoading(true);
 
     try {
       await createRestaurant(createRestaurantForm);
-      if (sessionTokenRef.current !== requestToken) return;
+      if (!isCurrent()) return;
       setCreateRestaurantSuccess("Ресторан успешно создан.");
+      setCreateRestaurantFieldErrors({});
       setCreateRestaurantForm({
         name: "",
         city: "",
@@ -334,10 +366,12 @@ function App() {
       setRestaurantOptionsRetrying(false);
       setRestaurantOptionsRefreshKey((value) => value + 1);
     } catch (err) {
-      if (sessionTokenRef.current !== requestToken) return;
-      setCreateRestaurantError(err.message || "Не удалось создать ресторан");
+      if (!isCurrent()) return;
+      const nextErrors = getFormErrorState(err, RESTAURANT_VALIDATION_FIELDS);
+      setCreateRestaurantFieldErrors(nextErrors.fieldErrors);
+      setCreateRestaurantError(nextErrors.formError || null);
     } finally {
-      if (sessionTokenRef.current === requestToken) {
+      if (isCurrent()) {
         setCreateRestaurantLoading(false);
       }
     }
@@ -398,6 +432,7 @@ function App() {
       updateUserRequestRef.current !== null
     ) return;
     setEditUserError("");
+    setEditUserFieldErrors({});
     setEditUser({
       id: user.id,
       username: user.username,
@@ -417,6 +452,7 @@ function App() {
 
   const openEditRestaurant = (restaurant) => {
     setEditRestaurantError("");
+    setEditRestaurantFieldErrors({});
     setEditRestaurant({
       id: restaurant.id,
       name: restaurant.name,
@@ -431,6 +467,7 @@ function App() {
   };
 
   const handleEditRestaurantFieldChange = (field, value) => {
+    setEditRestaurantFieldErrors((currentErrors) => clearFieldError(currentErrors, field));
     setEditRestaurantForm((currentForm) => ({
       ...currentForm,
       [field]: value,
@@ -443,6 +480,7 @@ function App() {
     setEditRestaurant(null);
     setEditRestaurantForm({ name: "", city: "", isActive: true });
     setEditRestaurantError("");
+    setEditRestaurantFieldErrors({});
   };
 
   const handleEditRestaurantSubmit = async (event) => {
@@ -453,6 +491,7 @@ function App() {
     const requestToken = sessionTokenRef.current;
     updateRestaurantRequestRef.current = updateRequest;
     setEditRestaurantError("");
+    setEditRestaurantFieldErrors({});
     setEditRestaurantLoading(true);
 
     try {
@@ -470,6 +509,7 @@ function App() {
       setEditRestaurant(null);
       setEditRestaurantForm({ name: "", city: "", isActive: true });
       setEditRestaurantError("");
+      setEditRestaurantFieldErrors({});
 
       restaurantsRequestGenerationRef.current += 1;
       setRestaurantsLoading(true);
@@ -488,7 +528,9 @@ function App() {
         updateRestaurantRequestRef.current !== updateRequest
       ) return;
 
-      setEditRestaurantError(err.message || "Не удалось изменить ресторан");
+      const nextErrors = getFormErrorState(err, RESTAURANT_VALIDATION_FIELDS);
+      setEditRestaurantFieldErrors(nextErrors.fieldErrors);
+      setEditRestaurantError(nextErrors.formError);
     } finally {
       const currentUpdateIsCurrent =
         sessionTokenRef.current === requestToken &&
@@ -563,14 +605,19 @@ function App() {
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
     const requestToken = sessionTokenRef.current;
+    const requestGeneration = sessionGenerationRef.current;
+    const isCurrent = () => sessionTokenRef.current === requestToken &&
+      sessionGenerationRef.current === requestGeneration;
     setCreateEmployeeError(null);
+    setCreateEmployeeFieldErrors({});
     setCreateEmployeeSuccess("");
     setCreateEmployeeLoading(true);
 
     try {
       await createEmployee(createEmployeeForm);
-      if (sessionTokenRef.current !== requestToken) return;
+      if (!isCurrent()) return;
       setCreateEmployeeSuccess("Сотрудник успешно создан.");
+      setCreateEmployeeFieldErrors({});
       setCreateEmployeeForm({
         firstName: "",
         lastName: "",
@@ -583,10 +630,12 @@ function App() {
       setEmployeesLoading(true);
       setEmployeesRefreshKey((value) => value + 1);
     } catch (err) {
-      if (sessionTokenRef.current !== requestToken) return;
-      setCreateEmployeeError(err.message || "Не удалось создать сотрудника");
+      if (!isCurrent()) return;
+      const nextErrors = getFormErrorState(err, EMPLOYEE_VALIDATION_FIELDS);
+      setCreateEmployeeFieldErrors(nextErrors.fieldErrors);
+      setCreateEmployeeError(nextErrors.formError || null);
     } finally {
-      if (sessionTokenRef.current === requestToken) {
+      if (isCurrent()) {
         setCreateEmployeeLoading(false);
       }
     }
@@ -594,6 +643,7 @@ function App() {
 
   const openEditEmployee = (employee) => {
     setEditEmployeeError("");
+    setEditEmployeeFieldErrors({});
     setEditEmployee({
       id: employee.id,
       firstName: employee.firstName,
@@ -614,6 +664,7 @@ function App() {
   };
 
   const handleEditEmployeeFieldChange = (field, value) => {
+    setEditEmployeeFieldErrors((currentErrors) => clearFieldError(currentErrors, field));
     setEditEmployeeForm((currentForm) => ({
       ...currentForm,
       [field]: value,
@@ -633,11 +684,13 @@ function App() {
       isActive: true,
     });
     setEditEmployeeError("");
+    setEditEmployeeFieldErrors({});
   };
 
   const handleEditEmployeeSubmit = async (event) => {
     event.preventDefault();
     if (!editEmployee || updateEmployeeRequestRef.current !== null) return;
+    setEditEmployeeFieldErrors({});
 
     const selectedRestaurant = allRestaurantOptions.find(
       (restaurant) => restaurant.id === editEmployeeForm.restaurantId,
@@ -681,6 +734,7 @@ function App() {
         isActive: true,
       });
       setEditEmployeeError("");
+      setEditEmployeeFieldErrors({});
 
       employeesRequestGenerationRef.current += 1;
       setEmployeesLoading(true);
@@ -691,7 +745,9 @@ function App() {
         updateEmployeeRequestRef.current !== updateRequest
       ) return;
 
-      setEditEmployeeError(err.message || "Не удалось изменить сотрудника");
+      const nextErrors = getFormErrorState(err, EMPLOYEE_VALIDATION_FIELDS);
+      setEditEmployeeFieldErrors(nextErrors.fieldErrors);
+      setEditEmployeeError(nextErrors.formError);
     } finally {
       const currentUpdateIsCurrent =
         sessionTokenRef.current === requestToken &&
@@ -760,6 +816,7 @@ function App() {
     if (updateUserRequestRef.current !== null) return;
     setEditUser(null);
     setEditUserError("");
+    setEditUserFieldErrors({});
     setEditUserForm({
       username: "",
       email: "",
@@ -771,6 +828,7 @@ function App() {
 
   const handleEditUserFieldChange = (field, value) => {
     if (updateUserRequestRef.current !== null) return;
+    setEditUserFieldErrors((currentErrors) => clearFieldError(currentErrors, field));
     setEditUserForm((prev) => ({
       ...prev,
       [field]: value,
@@ -795,6 +853,7 @@ function App() {
       updateUserRequestRef.current === updateRequest;
 
     setEditUserError("");
+    setEditUserFieldErrors({});
     setEditUserLoading(true);
 
     try {
@@ -822,11 +881,14 @@ function App() {
 
       setEditUser(null);
       setEditUserError("");
+      setEditUserFieldErrors({});
       setEditUserForm({ username: "", email: "", isActive: true, role: ROLES.ADMINISTRATOR, password: "" });
       await loadUsers(requestToken, isCurrent);
     } catch (err) {
       if (!isCurrent()) return;
-      setEditUserError(err.message || "Не удалось изменить пользователя");
+      const nextErrors = getFormErrorState(err, USER_VALIDATION_FIELDS);
+      setEditUserFieldErrors(nextErrors.fieldErrors);
+      setEditUserError(nextErrors.formError);
     } finally {
       if (isCurrent()) {
         updateUserRequestRef.current = null;
@@ -970,6 +1032,12 @@ function App() {
   }, [employeesSearchInput, employeesDebouncedSearch]);
 
   useEffect(() => setUnauthorizedHandler(() => {
+    setCreateUserFieldErrors({});
+    setEditUserFieldErrors({});
+    setCreateRestaurantFieldErrors({});
+    setEditRestaurantFieldErrors({});
+    setCreateEmployeeFieldErrors({});
+    setEditEmployeeFieldErrors({});
     updateUserRequestRef.current = null;
     setEditUserError("");
     setEditUserForm({ username: "", email: "", isActive: true, role: ROLES.ADMINISTRATOR, password: "" });
@@ -1262,6 +1330,12 @@ function App() {
   }, [session?.token, permissions.canCreate, restaurantOptionsRefreshKey]);
 
   const handleLogout = () => {
+    setCreateUserFieldErrors({});
+    setEditUserFieldErrors({});
+    setCreateRestaurantFieldErrors({});
+    setEditRestaurantFieldErrors({});
+    setCreateEmployeeFieldErrors({});
+    setEditEmployeeFieldErrors({});
     updateUserRequestRef.current = null;
     sessionGenerationRef.current += 1;
     deleteUserRequestRef.current = null;
@@ -1453,6 +1527,7 @@ function App() {
                   onCreateUser={handleCreateUser}
                   createUserLoading={createUserLoading}
                   createUserError={createUserError}
+                  createUserFieldErrors={createUserFieldErrors}
                   createUserSuccess={createUserSuccess}
                   editUser={editUser}
                   editUserForm={editUserForm}
@@ -1460,6 +1535,7 @@ function App() {
                   onEditUserSubmit={handleEditUserSubmit}
                   editUserLoading={editUserLoading}
                   editUserError={editUserError}
+                  editUserFieldErrors={editUserFieldErrors}
                   onCloseEditUser={closeEditUser}
                 />
               }
@@ -1487,6 +1563,7 @@ function App() {
                   onCreateRestaurant={handleCreateRestaurant}
                   createRestaurantLoading={createRestaurantLoading}
                   createRestaurantError={createRestaurantError}
+                  createRestaurantFieldErrors={createRestaurantFieldErrors}
                   createRestaurantSuccess={createRestaurantSuccess}
                   onDeleteRestaurant={openDeleteRestaurant}
                   restaurantToDelete={restaurantToDelete}
@@ -1502,6 +1579,7 @@ function App() {
                   onCloseEditRestaurant={closeEditRestaurant}
                   editRestaurantLoading={editRestaurantLoading}
                   editRestaurantError={editRestaurantError}
+                  editRestaurantFieldErrors={editRestaurantFieldErrors}
                   permissions={permissions}
                 />
               }
@@ -1529,6 +1607,7 @@ function App() {
                   onCreateEmployee={handleCreateEmployee}
                   createEmployeeLoading={createEmployeeLoading}
                   createEmployeeError={createEmployeeError}
+                  createEmployeeFieldErrors={createEmployeeFieldErrors}
                   createEmployeeSuccess={createEmployeeSuccess}
                   onDeleteEmployee={openDeleteEmployee}
                   employeeToDelete={employeeToDelete}
@@ -1551,6 +1630,7 @@ function App() {
                   onCloseEditEmployee={closeEditEmployee}
                   editEmployeeLoading={editEmployeeLoading}
                   editEmployeeError={editEmployeeError}
+                  editEmployeeFieldErrors={editEmployeeFieldErrors}
                   permissions={permissions}
                 />
               }
