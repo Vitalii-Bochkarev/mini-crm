@@ -83,6 +83,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            OnTokenValidated = ValidateCurrentUserAsync,
             OnChallenge = context =>
             {
                 context.HandleResponse();
@@ -605,6 +606,13 @@ static IResult UpdateUser(
             string.IsNullOrWhiteSpace(request.Role) ? "Viewer" : request.Role,
             request.Password);
     }
+    catch (DbUpdateConcurrencyException)
+    {
+        return Results.Conflict(new
+        {
+            error = "Пользователь был изменён другим запросом. Обновите данные и повторите попытку."
+        });
+    }
     catch (DbUpdateException exception) when (IsConstraintViolation(
         exception,
         PostgresErrorCodes.UniqueViolation,
@@ -823,12 +831,14 @@ static AdminUserResponse ToAdminUserResponse(AdminUser user)
 
 static string GenerateJwtToken(AdminUser user, JwtSettings settings)
 {
+    const string tokenVersionClaim = "token_version";
     var claims = new[]
     {
         new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
         new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
         new Claim(JwtRegisteredClaimNames.Email, user.Email),
-        new Claim(ClaimTypes.Role, user.Role)
+        new Claim(ClaimTypes.Role, user.Role),
+        new Claim(tokenVersionClaim, user.TokenVersion.ToString())
     };
 
     var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SecretKey));
@@ -841,6 +851,59 @@ static string GenerateJwtToken(AdminUser user, JwtSettings settings)
         signingCredentials: credentials);
 
     return new JwtSecurityTokenHandler().WriteToken(token);
+}
+
+static async Task ValidateCurrentUserAsync(TokenValidatedContext context)
+{
+    const string tokenVersionClaim = "token_version";
+    const string authenticationFailure = "The authenticated user state is no longer valid.";
+
+    var subject = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    var role = context.Principal?.FindFirstValue(ClaimTypes.Role);
+    var tokenVersionValue = context.Principal?.FindFirst(tokenVersionClaim)?.Value;
+
+    if (!Guid.TryParse(subject, out var userId) ||
+        string.IsNullOrWhiteSpace(role) ||
+        !int.TryParse(tokenVersionValue, out var tokenVersion))
+    {
+        context.Fail(authenticationFailure);
+        return;
+    }
+
+    try
+    {
+        var dbContext = context.HttpContext.RequestServices.GetRequiredService<AdminDbContext>();
+        var currentUser = await dbContext.AdminUsers
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => new { user.IsActive, user.Role, user.TokenVersion })
+            .SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+
+        if (currentUser is null ||
+            !currentUser.IsActive ||
+            !string.Equals(currentUser.Role, role, StringComparison.Ordinal) ||
+            currentUser.TokenVersion != tokenVersion)
+        {
+            context.Fail(authenticationFailure);
+        }
+    }
+    catch (OperationCanceledException) when (context.HttpContext.RequestAborted.IsCancellationRequested)
+    {
+        context.Fail(authenticationFailure);
+    }
+    catch (Exception exception)
+    {
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("JwtCurrentUserValidation");
+
+        logger.LogError(
+            exception,
+            "Unable to validate current user state. Trace identifier: {TraceIdentifier}",
+            context.HttpContext.TraceIdentifier);
+        context.Fail(authenticationFailure);
+    }
 }
 
 static JwtSettings GetValidatedJwtSettings(IConfiguration configuration)
