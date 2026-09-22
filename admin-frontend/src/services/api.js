@@ -8,6 +8,18 @@ const VALID_ROLES = new Set(Object.values(ROLES));
 let unauthorizedHandler = null;
 let unauthorizedHandled = false;
 let sessionGeneration = 0;
+let currentSession = null;
+
+function clearLegacyStoredSession() {
+  try {
+    globalThis.localStorage?.removeItem(TOKEN_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(USER_STORAGE_KEY);
+  } catch {
+    // Storage may be unavailable; the in-memory session remains usable.
+  }
+}
+
+clearLegacyStoredSession();
 
 export class ApiError extends Error {
   constructor(message, status = 0, fieldErrors = null) {
@@ -54,42 +66,24 @@ export function saveSession(session) {
     throw new Error("Сервер вернул некорректные данные сессии.");
   }
 
-  localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+  currentSession = {
+    token: session.token,
+    user: { ...session.user },
+  };
   sessionGeneration += 1;
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+  clearLegacyStoredSession();
   unauthorizedHandled = false;
-  return session;
+  return currentSession;
 }
 
 export function clearSession() {
   sessionGeneration += 1;
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-  localStorage.removeItem(USER_STORAGE_KEY);
+  currentSession = null;
+  clearLegacyStoredSession();
 }
 
-export function getSavedSession() {
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-  const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-
-  if (token === null && storedUser === null) return null;
-
-  if (!isTokenValid(token) || !storedUser) {
-    clearSession();
-    return null;
-  }
-
-  try {
-    const user = JSON.parse(storedUser);
-    if (!isStoredUserValid(user)) {
-      clearSession();
-      return null;
-    }
-
-    return { token, user };
-  } catch {
-    clearSession();
-    return null;
-  }
+export function getSession() {
+  return currentSession;
 }
 
 export function setUnauthorizedHandler(handler) {
@@ -105,7 +99,7 @@ export function setUnauthorizedHandler(handler) {
 function notifyUnauthorized(expectedToken = null) {
   if (unauthorizedHandled) return;
 
-  if (expectedToken && getSavedSession()?.token !== expectedToken) {
+  if (expectedToken && getSession()?.token !== expectedToken) {
     return;
   }
 
@@ -152,7 +146,7 @@ async function request(url, options = {}, requiresAuth = true) {
   let requestToken = null;
 
   if (requiresAuth) {
-    const session = getSavedSession();
+    const session = getSession();
     if (!session) {
       notifyUnauthorized();
       throw new ApiError("Токен авторизации не найден", 401);

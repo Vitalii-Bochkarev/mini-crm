@@ -7,7 +7,7 @@ import RestaurantsPage from "./pages/RestaurantsPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
-import { login, getUsers, createUser, deleteUser, updateUser, getRestaurants, createRestaurant, updateRestaurant, deleteRestaurant, getEmployees, createEmployee, updateEmployee, deleteEmployee, clearSession, getSavedSession, saveSession, setUnauthorizedHandler } from "./services/api";
+import { login, getUsers, createUser, deleteUser, updateUser, getRestaurants, createRestaurant, updateRestaurant, deleteRestaurant, getEmployees, createEmployee, updateEmployee, deleteEmployee, clearSession, getSession, saveSession, setUnauthorizedHandler } from "./services/api";
 import { ROLES } from "./utils/formatters";
 import { clearFieldError, getFormErrorState } from "./utils/formErrors";
 import { getUiPermissions } from "./utils/permissions";
@@ -24,7 +24,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [session, setSession] = useState(() => getSavedSession());
+  const [session, setSession] = useState(() => getSession());
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState(null);
