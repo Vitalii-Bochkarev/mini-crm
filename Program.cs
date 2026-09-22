@@ -125,9 +125,16 @@ builder.Services.AddAuthorization();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
         "Connection string 'DefaultConnection' is not configured.");
+var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
+{
+    IncludeErrorDetail = false
+};
 
 builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options
+        .UseNpgsql(connectionStringBuilder.ConnectionString)
+        .EnableSensitiveDataLogging(false)
+        .EnableDetailedErrors(builder.Environment.IsDevelopment()));
 
 // Services
 builder.Services.AddScoped<AdminRepository>();
@@ -200,6 +207,13 @@ app.UseStatusCodePages(async context =>
 
     switch (response.StatusCode)
     {
+        case StatusCodes.Status400BadRequest:
+            response.ContentType = "application/json";
+            await response.WriteAsJsonAsync(
+                new { error = "Некорректный запрос." },
+                context.HttpContext.RequestAborted);
+            break;
+
         case StatusCodes.Status404NotFound:
             response.ContentType = "application/json";
             await response.WriteAsJsonAsync(
