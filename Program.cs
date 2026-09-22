@@ -11,6 +11,7 @@ using MyProject2.Admin;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+const string frontendCorsPolicy = "Frontend";
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -43,16 +44,20 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+var allowedCorsOrigins = GetValidatedCorsOrigins(builder.Configuration);
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
-        policy =>
+    options.AddPolicy(frontendCorsPolicy, policy =>
+    {
+        if (allowedCorsOrigins.Length > 0)
         {
             policy
+                .WithOrigins(allowedCorsOrigins)
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowAnyOrigin();
-        });
+                .AllowAnyMethod();
+        }
+    });
 });
 
 // JWT settings
@@ -174,11 +179,21 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseExceptionHandler();
-app.UseSwagger();
-app.UseSwaggerUI();
-app.UseCors("AllowFrontend");
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors(frontendCorsPolicy);
 app.UseStatusCodePages(async context =>
 {
     var response = context.HttpContext.Response;
@@ -800,6 +815,57 @@ static JwtSettings GetValidatedJwtSettings(IConfiguration configuration)
     }
 
     return new JwtSettings(issuer, audience, secretKey, expireMinutes);
+}
+
+static string[] GetValidatedCorsOrigins(IConfiguration configuration)
+{
+    const string sectionName = "Cors:AllowedOrigins";
+    var configuredOrigins = configuration.GetSection(sectionName).Get<string[]>()
+        ?? Array.Empty<string>();
+    var normalizedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    for (var index = 0; index < configuredOrigins.Length; index++)
+    {
+        var configuredOrigin = configuredOrigins[index];
+        if (string.IsNullOrWhiteSpace(configuredOrigin))
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' contains an empty origin at index {index}.");
+        }
+
+        var candidate = configuredOrigin.Trim();
+        if (candidate == "*")
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' must not contain wildcard origins.");
+        }
+
+        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+            string.IsNullOrEmpty(uri.Host) ||
+            !string.IsNullOrEmpty(uri.UserInfo) ||
+            !candidate.StartsWith($"{uri.Scheme}://", StringComparison.OrdinalIgnoreCase) ||
+            uri.AbsolutePath != "/" ||
+            !string.IsNullOrEmpty(uri.Query) ||
+            !string.IsNullOrEmpty(uri.Fragment))
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' contains an invalid origin at index {index}. " +
+                "Origins must be absolute HTTP or HTTPS addresses without credentials, path, query, or fragment.");
+        }
+
+        var authorityEnd = candidate.IndexOfAny(['/', '?', '#'], candidate.IndexOf("://", StringComparison.Ordinal) + 3);
+        if (authorityEnd >= 0 && candidate[authorityEnd..] != "/")
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' contains an invalid origin at index {index}. " +
+                "Origins must not contain a path, query, or fragment.");
+        }
+
+        normalizedOrigins.Add(uri.GetLeftPart(UriPartial.Authority));
+    }
+
+    return normalizedOrigins.ToArray();
 }
 
 static string GetRequiredConfigurationValue(IConfiguration configuration, string key)
