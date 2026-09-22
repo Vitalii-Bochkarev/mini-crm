@@ -1,6 +1,6 @@
 import { ROLES } from "../utils/formatters.js";
 
-const API_URL = "http://localhost:5269";
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 const TOKEN_STORAGE_KEY = "token";
 const USER_STORAGE_KEY = "user";
 const VALID_ROLES = new Set(Object.values(ROLES));
