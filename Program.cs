@@ -397,7 +397,9 @@ admin.MapGet("/users/{id:guid}", GetUserById);
 admin.MapPost("/users", CreateUser)
     .RequireAuthorization(policy =>
         policy.RequireRole("Administrator", "Editor"));
-admin.MapPut("/users/{id:guid}", UpdateUser);
+admin.MapPut("/users/{id:guid}", UpdateUser)
+    .RequireAuthorization(policy =>
+        policy.RequireRole("Administrator", "Editor"));
 admin.MapDelete("/users/{id:guid}", DeleteUser)
     .RequireAuthorization(policy =>
         policy.RequireRole("Administrator"));
@@ -499,12 +501,21 @@ static void ValidateProperty<T>(
 }
 
 
-static IResult CreateUser(AdminUserCreateRequest request, AdminRepository repository)
+static IResult CreateUser(
+    AdminUserCreateRequest request,
+    ClaimsPrincipal currentUser,
+    AdminRepository repository)
 {
     var validationErrors = GetCreateUserValidationErrors(request);
     if (validationErrors is not null)
     {
         return Results.ValidationProblem(validationErrors);
+    }
+
+    if (currentUser.IsInRole("Editor") &&
+        string.Equals(request.Role, "Administrator", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Forbid();
     }
 
     if (repository.UsernameExists(request.Username))
@@ -545,7 +556,11 @@ static IResult CreateUser(AdminUserCreateRequest request, AdminRepository reposi
 }
 
 
-static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminRepository repository)
+static IResult UpdateUser(
+    Guid id,
+    AdminUserUpdateRequest request,
+    ClaimsPrincipal currentUser,
+    AdminRepository repository)
 {
     var validationErrors = GetValidationErrors(request);
     if (validationErrors is not null)
@@ -553,9 +568,20 @@ static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminReposito
         return Results.ValidationProblem(validationErrors);
     }
 
-    if (repository.Get(id) is null)
+    var user = repository.Get(id);
+    if (user is null)
     {
         return Results.NotFound(new { error = "Пользователь не найден." });
+    }
+
+    if (currentUser.IsInRole("Editor") &&
+        (!TryGetCurrentUserId(currentUser, out var currentUserId) ||
+         string.Equals(user.Role, "Administrator", StringComparison.OrdinalIgnoreCase) ||
+         !string.Equals(request.Role, user.Role, StringComparison.OrdinalIgnoreCase) ||
+         request.IsActive != user.IsActive ||
+         currentUserId != id && !string.IsNullOrWhiteSpace(request.Password)))
+    {
+        return Results.Forbid();
     }
 
     if (repository.UsernameExists(request.Username, id))
@@ -600,12 +626,28 @@ static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminReposito
 }
 
 
-static IResult DeleteUser(Guid id, AdminRepository repository)
+static IResult DeleteUser(
+    Guid id,
+    ClaimsPrincipal currentUser,
+    AdminRepository repository)
 {
+    if (!TryGetCurrentUserId(currentUser, out var currentUserId) || currentUserId == id)
+    {
+        return Results.Forbid();
+    }
+
     var deleted = repository.Delete(id);
     return deleted
         ? Results.NoContent()
         : Results.NotFound(new { error = "Пользователь не найден." });
+}
+
+static bool TryGetCurrentUserId(ClaimsPrincipal currentUser, out Guid currentUserId)
+{
+    var subject = currentUser.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? currentUser.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+    return Guid.TryParse(subject, out currentUserId);
 }
 
 
