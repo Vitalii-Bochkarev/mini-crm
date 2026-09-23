@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend build and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: ci_admin
+          POSTGRES_PASSWORD: ci-only-postgres-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_admin -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore backend dependencies
+        run: dotnet restore MyProject2.sln
+
+      - name: Build solution
+        run: dotnet build MyProject2.sln --configuration Release --no-restore
+
+      - name: Run backend integration tests
+        env:
+          MINICRM_TEST_POSTGRES_CONNECTION: >-
+            Host=localhost;Port=5432;Database=postgres;Username=ci_admin;Password=ci-only-postgres-password;Pooling=false
+        run: >-
+          dotnet test MyProject2.Tests/MyProject2.Tests.csproj
+          --configuration Release
+          --no-build
+          --no-restore
+          --logger "console;verbosity=normal"
+
+  frontend:
+    name: Frontend production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: admin-frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: admin-frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: admin-frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:5269
+        run: npm run build
