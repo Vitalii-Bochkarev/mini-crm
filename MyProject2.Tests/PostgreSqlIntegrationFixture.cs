@@ -163,7 +163,7 @@ public sealed class PostgreSqlIntegrationFixture : IAsyncLifetime
         return Assert.IsType<TestUser>(user);
     }
 
-    private async Task<TestUser> CreateUserAsync(string username, string role, string password)
+    public async Task<TestUser> CreateUserAsync(string username, string role, string password)
     {
         using var request = CreateAuthorizedRequest(
             HttpMethod.Post,
