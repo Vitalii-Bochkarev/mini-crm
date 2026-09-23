@@ -163,7 +163,11 @@ public sealed class PostgreSqlIntegrationFixture : IAsyncLifetime
         return Assert.IsType<TestUser>(user);
     }
 
-    public async Task<TestUser> CreateUserAsync(string username, string role, string password)
+    public async Task<TestUser> CreateUserAsync(
+        string username,
+        string role,
+        string password,
+        string? email = null)
     {
         using var request = CreateAuthorizedRequest(
             HttpMethod.Post,
@@ -172,7 +176,7 @@ public sealed class PostgreSqlIntegrationFixture : IAsyncLifetime
             new
             {
                 username,
-                email = $"{username}@example.test",
+                email = email ?? $"{username}@example.test",
                 role,
                 password
             });
