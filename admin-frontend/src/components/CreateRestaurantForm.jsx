@@ -1,25 +1,57 @@
-import React from "react";
+import { useEffect, useId, useRef } from "react";
+import FieldErrorMessages from "./FieldErrorMessages";
 
-function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, error, success }) {
+function CreateRestaurantForm({
+  formData,
+  onFieldChange,
+  onSubmit,
+  loading,
+  error,
+  fieldErrors = {},
+  success,
+  mode = "create",
+  embedded = false,
+  onCancel,
+}) {
+  const isEdit = mode === "edit";
+  const formId = useId();
+  const nameId = `${formId}-name`;
+  const cityId = `${formId}-city`;
+  const nameRef = useRef(null);
+  const cityRef = useRef(null);
+
+  useEffect(() => {
+    const firstInvalidField = [
+      ["name", nameRef],
+      ["city", cityRef],
+    ].find(([field, ref]) => fieldErrors[field]?.length && !ref.current?.disabled);
+    firstInvalidField?.[1].current?.focus();
+  }, [fieldErrors]);
+
   return (
     <div
       style={{
-        backgroundColor: "#111827",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.04)",
-        boxShadow: "0 8px 30px rgba(2,6,23,0.7)",
-        padding: 24,
+        backgroundColor: embedded ? "transparent" : "#111827",
+        borderRadius: embedded ? 0 : 14,
+        border: embedded ? "none" : "1px solid rgba(255,255,255,0.04)",
+        boxShadow: embedded ? "none" : "0 8px 30px rgba(2,6,23,0.7)",
+        padding: embedded ? 0 : 24,
       }}
     >
-      <div style={{ marginBottom: 20 }}>
-        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Добавление ресторана</h3>
-        <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
-          Добавьте новый ресторан в CRM.
-        </p>
-      </div>
+      {!embedded && (
+        <div style={{ marginBottom: 20 }}>
+          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>
+            {isEdit ? "Изменение ресторана" : "Добавление ресторана"}
+          </h3>
+          <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
+            {isEdit ? "Измените данные ресторана." : "Добавьте новый ресторан в CRM."}
+          </p>
+        </div>
+      )}
 
       {error && (
         <div
+          role="alert"
           style={{
             marginBottom: 16,
             padding: 12,
@@ -48,13 +80,17 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
 
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 16 }}>
         <div>
-          <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
+          <label htmlFor={nameId} style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
             Название ресторана
           </label>
           <input
+            ref={nameRef}
+            id={nameId}
             type="text"
             value={formData.name}
             onChange={(e) => onFieldChange("name", e.target.value)}
+            aria-invalid={fieldErrors.name?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.name?.length ? `${nameId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -65,16 +101,21 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
               padding: "12px 14px",
             }}
           />
+          <FieldErrorMessages id={`${nameId}-errors`} messages={fieldErrors.name} />
         </div>
 
         <div>
-          <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
+          <label htmlFor={cityId} style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
             Город
           </label>
           <input
+            ref={cityRef}
+            id={cityId}
             type="text"
             value={formData.city}
             onChange={(e) => onFieldChange("city", e.target.value)}
+            aria-invalid={fieldErrors.city?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.city?.length ? `${cityId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -85,6 +126,7 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
               padding: "12px 14px",
             }}
           />
+          <FieldErrorMessages id={`${cityId}-errors`} messages={fieldErrors.city} />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -99,22 +141,47 @@ function CreateRestaurantForm({ formData, onFieldChange, onSubmit, loading, erro
           </label>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            border: "none",
-            borderRadius: 10,
-            padding: "12px 16px",
-            background: "#2563eb",
-            color: "#fff",
-            fontWeight: 700,
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.75 : 1,
-          }}
-        >
-          {loading ? "Добавление..." : "Добавить ресторан"}
-        </button>
+        <div style={{ display: "flex", gap: 12 }}>
+          {isEdit && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              style={{
+                flex: 1,
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                padding: "12px 16px",
+                background: "#0f172a",
+                color: "#e6eef8",
+                fontWeight: 700,
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.75 : 1,
+              }}
+            >
+              Отмена
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              flex: 1,
+              border: "none",
+              borderRadius: 10,
+              padding: "12px 16px",
+              background: "#2563eb",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.75 : 1,
+            }}
+          >
+            {loading
+              ? isEdit ? "Сохранение..." : "Добавление..."
+              : isEdit ? "Сохранить изменения" : "Добавить ресторан"}
+          </button>
+        </div>
       </form>
     </div>
   );

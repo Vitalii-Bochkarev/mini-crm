@@ -1,7 +1,13 @@
+export const ROLES = Object.freeze({
+  ADMINISTRATOR: "Administrator",
+  EDITOR: "Editor",
+  VIEWER: "Viewer",
+});
+
 export const ROLE_LABELS = {
-  Administrator: "Администратор",
-  Editor: "Редактор",
-  Viewer: "Наблюдатель",
+  [ROLES.ADMINISTRATOR]: "Администратор",
+  [ROLES.EDITOR]: "Редактор",
+  [ROLES.VIEWER]: "Наблюдатель",
 };
 
 export const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({

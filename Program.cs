@@ -11,6 +11,7 @@ using MyProject2.Admin;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+const string frontendCorsPolicy = "Frontend";
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -43,24 +44,24 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+var allowedCorsOrigins = GetValidatedCorsOrigins(builder.Configuration);
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
-        policy =>
+    options.AddPolicy(frontendCorsPolicy, policy =>
+    {
+        if (allowedCorsOrigins.Length > 0)
         {
             policy
+                .WithOrigins(allowedCorsOrigins)
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowAnyOrigin();
-        });
+                .AllowAnyMethod();
+        }
+    });
 });
 
 // JWT settings
-var jwtSettings = new JwtSettings(
-    Issuer: builder.Configuration["Jwt:Issuer"] ?? "MyProject2",
-    Audience: builder.Configuration["Jwt:Audience"] ?? "MyProject2",
-    SecretKey: builder.Configuration["Jwt:SecretKey"] ?? "SuperSecretJwtKey_ChangeThis_AtLeast32Chars!",
-    ExpireMinutes: int.TryParse(builder.Configuration["Jwt:ExpireMinutes"], out var expireMinutes) ? expireMinutes : 60);
+var jwtSettings = GetValidatedJwtSettings(builder.Configuration);
 
 builder.Services.AddSingleton(jwtSettings);
 
@@ -82,6 +83,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            OnTokenValidated = ValidateCurrentUserAsync,
             OnChallenge = context =>
             {
                 context.HandleResponse();
@@ -121,9 +123,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // Database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "Connection string 'DefaultConnection' is not configured.");
+var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
+{
+    IncludeErrorDetail = false
+};
+
 builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseNpgsql(
-        "Host=localhost;Port=5432;Database=adminpanel;Username=postgres;Password=postgres123"));
+    options
+        .UseNpgsql(connectionStringBuilder.ConnectionString)
+        .EnableSensitiveDataLogging(false)
+        .EnableDetailedErrors(builder.Environment.IsDevelopment()));
 
 // Services
 builder.Services.AddScoped<AdminRepository>();
@@ -139,9 +151,19 @@ using (var scope = app.Services.CreateScope())
 
     if (!dbContext.AdminUsers.Any())
     {
-        var (superHash, superSalt) = PasswordHasher.HashPassword("SuperAdmin123!");
-        var (jdoeHash, jdoeSalt) = PasswordHasher.HashPassword("Editor123!");
-        var (asmithHash, asmithSalt) = PasswordHasher.HashPassword("Viewer123!");
+        var superAdminPassword = GetRequiredConfigurationValue(
+            builder.Configuration,
+            "SeedUsers:SuperAdminPassword");
+        var editorPassword = GetRequiredConfigurationValue(
+            builder.Configuration,
+            "SeedUsers:EditorPassword");
+        var viewerPassword = GetRequiredConfigurationValue(
+            builder.Configuration,
+            "SeedUsers:ViewerPassword");
+
+        var (superHash, superSalt) = PasswordHasher.HashPassword(superAdminPassword);
+        var (jdoeHash, jdoeSalt) = PasswordHasher.HashPassword(editorPassword);
+        var (asmithHash, asmithSalt) = PasswordHasher.HashPassword(viewerPassword);
 
         dbContext.AdminUsers.AddRange(
             new AdminUser(Guid.NewGuid(), "superadmin", "superadmin@example.com", true, "Administrator")
@@ -165,17 +187,34 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseExceptionHandler();
-app.UseSwagger();
-app.UseSwaggerUI();
-app.UseCors("AllowFrontend");
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors(frontendCorsPolicy);
 app.UseStatusCodePages(async context =>
 {
     var response = context.HttpContext.Response;
 
     switch (response.StatusCode)
     {
+        case StatusCodes.Status400BadRequest:
+            response.ContentType = "application/json";
+            await response.WriteAsJsonAsync(
+                new { error = "Некорректный запрос." },
+                context.HttpContext.RequestAborted);
+            break;
+
         case StatusCodes.Status404NotFound:
             response.ContentType = "application/json";
             await response.WriteAsJsonAsync(
@@ -359,7 +398,9 @@ admin.MapGet("/users/{id:guid}", GetUserById);
 admin.MapPost("/users", CreateUser)
     .RequireAuthorization(policy =>
         policy.RequireRole("Administrator", "Editor"));
-admin.MapPut("/users/{id:guid}", UpdateUser);
+admin.MapPut("/users/{id:guid}", UpdateUser)
+    .RequireAuthorization(policy =>
+        policy.RequireRole("Administrator", "Editor"));
 admin.MapDelete("/users/{id:guid}", DeleteUser)
     .RequireAuthorization(policy =>
         policy.RequireRole("Administrator"));
@@ -461,12 +502,21 @@ static void ValidateProperty<T>(
 }
 
 
-static IResult CreateUser(AdminUserCreateRequest request, AdminRepository repository)
+static IResult CreateUser(
+    AdminUserCreateRequest request,
+    ClaimsPrincipal currentUser,
+    AdminRepository repository)
 {
     var validationErrors = GetCreateUserValidationErrors(request);
     if (validationErrors is not null)
     {
         return Results.ValidationProblem(validationErrors);
+    }
+
+    if (currentUser.IsInRole("Editor") &&
+        string.Equals(request.Role, "Administrator", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Forbid();
     }
 
     if (repository.UsernameExists(request.Username))
@@ -507,7 +557,11 @@ static IResult CreateUser(AdminUserCreateRequest request, AdminRepository reposi
 }
 
 
-static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminRepository repository)
+static IResult UpdateUser(
+    Guid id,
+    AdminUserUpdateRequest request,
+    ClaimsPrincipal currentUser,
+    AdminRepository repository)
 {
     var validationErrors = GetValidationErrors(request);
     if (validationErrors is not null)
@@ -515,9 +569,20 @@ static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminReposito
         return Results.ValidationProblem(validationErrors);
     }
 
-    if (repository.Get(id) is null)
+    var user = repository.Get(id);
+    if (user is null)
     {
         return Results.NotFound(new { error = "Пользователь не найден." });
+    }
+
+    if (currentUser.IsInRole("Editor") &&
+        (!TryGetCurrentUserId(currentUser, out var currentUserId) ||
+         string.Equals(user.Role, "Administrator", StringComparison.OrdinalIgnoreCase) ||
+         !string.Equals(request.Role, user.Role, StringComparison.OrdinalIgnoreCase) ||
+         request.IsActive != user.IsActive ||
+         currentUserId != id && !string.IsNullOrWhiteSpace(request.Password)))
+    {
+        return Results.Forbid();
     }
 
     if (repository.UsernameExists(request.Username, id))
@@ -541,6 +606,13 @@ static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminReposito
             string.IsNullOrWhiteSpace(request.Role) ? "Viewer" : request.Role,
             request.Password);
     }
+    catch (DbUpdateConcurrencyException)
+    {
+        return Results.Conflict(new
+        {
+            error = "Пользователь был изменён другим запросом. Обновите данные и повторите попытку."
+        });
+    }
     catch (DbUpdateException exception) when (IsConstraintViolation(
         exception,
         PostgresErrorCodes.UniqueViolation,
@@ -562,12 +634,28 @@ static IResult UpdateUser(Guid id, AdminUserUpdateRequest request, AdminReposito
 }
 
 
-static IResult DeleteUser(Guid id, AdminRepository repository)
+static IResult DeleteUser(
+    Guid id,
+    ClaimsPrincipal currentUser,
+    AdminRepository repository)
 {
+    if (!TryGetCurrentUserId(currentUser, out var currentUserId) || currentUserId == id)
+    {
+        return Results.Forbid();
+    }
+
     var deleted = repository.Delete(id);
     return deleted
         ? Results.NoContent()
         : Results.NotFound(new { error = "Пользователь не найден." });
+}
+
+static bool TryGetCurrentUserId(ClaimsPrincipal currentUser, out Guid currentUserId)
+{
+    var subject = currentUser.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? currentUser.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+    return Guid.TryParse(subject, out currentUserId);
 }
 
 
@@ -743,12 +831,14 @@ static AdminUserResponse ToAdminUserResponse(AdminUser user)
 
 static string GenerateJwtToken(AdminUser user, JwtSettings settings)
 {
+    const string tokenVersionClaim = "token_version";
     var claims = new[]
     {
         new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
         new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
         new Claim(JwtRegisteredClaimNames.Email, user.Email),
-        new Claim(ClaimTypes.Role, user.Role)
+        new Claim(ClaimTypes.Role, user.Role),
+        new Claim(tokenVersionClaim, user.TokenVersion.ToString())
     };
 
     var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SecretKey));
@@ -763,6 +853,151 @@ static string GenerateJwtToken(AdminUser user, JwtSettings settings)
     return new JwtSecurityTokenHandler().WriteToken(token);
 }
 
+static async Task ValidateCurrentUserAsync(TokenValidatedContext context)
+{
+    const string tokenVersionClaim = "token_version";
+    const string authenticationFailure = "The authenticated user state is no longer valid.";
+
+    var subject = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    var role = context.Principal?.FindFirstValue(ClaimTypes.Role);
+    var tokenVersionValue = context.Principal?.FindFirst(tokenVersionClaim)?.Value;
+
+    if (!Guid.TryParse(subject, out var userId) ||
+        string.IsNullOrWhiteSpace(role) ||
+        !int.TryParse(tokenVersionValue, out var tokenVersion))
+    {
+        context.Fail(authenticationFailure);
+        return;
+    }
+
+    try
+    {
+        var dbContext = context.HttpContext.RequestServices.GetRequiredService<AdminDbContext>();
+        var currentUser = await dbContext.AdminUsers
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => new { user.IsActive, user.Role, user.TokenVersion })
+            .SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+
+        if (currentUser is null ||
+            !currentUser.IsActive ||
+            !string.Equals(currentUser.Role, role, StringComparison.Ordinal) ||
+            currentUser.TokenVersion != tokenVersion)
+        {
+            context.Fail(authenticationFailure);
+        }
+    }
+    catch (OperationCanceledException) when (context.HttpContext.RequestAborted.IsCancellationRequested)
+    {
+        context.Fail(authenticationFailure);
+    }
+    catch (Exception exception)
+    {
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("JwtCurrentUserValidation");
+
+        logger.LogError(
+            exception,
+            "Unable to validate current user state. Trace identifier: {TraceIdentifier}",
+            context.HttpContext.TraceIdentifier);
+        context.Fail(authenticationFailure);
+    }
+}
+
+static JwtSettings GetValidatedJwtSettings(IConfiguration configuration)
+{
+    const string issuerKey = "Jwt:Issuer";
+    const string audienceKey = "Jwt:Audience";
+    const string secretKeyName = "Jwt:SecretKey";
+    const string expireMinutesKey = "Jwt:ExpireMinutes";
+    const int minimumSecretKeyBytes = 32;
+    const int maximumExpireMinutes = 1440;
+
+    var issuer = GetRequiredConfigurationValue(configuration, issuerKey);
+    var audience = GetRequiredConfigurationValue(configuration, audienceKey);
+    var secretKey = GetRequiredConfigurationValue(configuration, secretKeyName);
+
+    if (Encoding.UTF8.GetByteCount(secretKey) < minimumSecretKeyBytes)
+    {
+        throw new InvalidOperationException(
+            $"Configuration key '{secretKeyName}' must be at least {minimumSecretKeyBytes} bytes.");
+    }
+
+    var expireMinutesValue = GetRequiredConfigurationValue(configuration, expireMinutesKey);
+    if (!int.TryParse(expireMinutesValue, out var expireMinutes) ||
+        expireMinutes is <= 0 or > maximumExpireMinutes)
+    {
+        throw new InvalidOperationException(
+            $"Configuration key '{expireMinutesKey}' must be an integer between 1 and {maximumExpireMinutes}.");
+    }
+
+    return new JwtSettings(issuer, audience, secretKey, expireMinutes);
+}
+
+static string[] GetValidatedCorsOrigins(IConfiguration configuration)
+{
+    const string sectionName = "Cors:AllowedOrigins";
+    var configuredOrigins = configuration.GetSection(sectionName).Get<string[]>()
+        ?? Array.Empty<string>();
+    var normalizedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    for (var index = 0; index < configuredOrigins.Length; index++)
+    {
+        var configuredOrigin = configuredOrigins[index];
+        if (string.IsNullOrWhiteSpace(configuredOrigin))
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' contains an empty origin at index {index}.");
+        }
+
+        var candidate = configuredOrigin.Trim();
+        if (candidate == "*")
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' must not contain wildcard origins.");
+        }
+
+        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+            string.IsNullOrEmpty(uri.Host) ||
+            !string.IsNullOrEmpty(uri.UserInfo) ||
+            !candidate.StartsWith($"{uri.Scheme}://", StringComparison.OrdinalIgnoreCase) ||
+            uri.AbsolutePath != "/" ||
+            !string.IsNullOrEmpty(uri.Query) ||
+            !string.IsNullOrEmpty(uri.Fragment))
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' contains an invalid origin at index {index}. " +
+                "Origins must be absolute HTTP or HTTPS addresses without credentials, path, query, or fragment.");
+        }
+
+        var authorityEnd = candidate.IndexOfAny(['/', '?', '#'], candidate.IndexOf("://", StringComparison.Ordinal) + 3);
+        if (authorityEnd >= 0 && candidate[authorityEnd..] != "/")
+        {
+            throw new InvalidOperationException(
+                $"Configuration section '{sectionName}' contains an invalid origin at index {index}. " +
+                "Origins must not contain a path, query, or fragment.");
+        }
+
+        normalizedOrigins.Add(uri.GetLeftPart(UriPartial.Authority));
+    }
+
+    return normalizedOrigins.ToArray();
+}
+
+static string GetRequiredConfigurationValue(IConfiguration configuration, string key)
+{
+    var value = configuration[key];
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new InvalidOperationException($"Configuration key '{key}' is required.");
+    }
+
+    return value;
+}
+
 internal sealed record JwtSettings(string Issuer, string Audience, string SecretKey, int ExpireMinutes);
 
 record WeatherForecast(
@@ -772,5 +1007,9 @@ record WeatherForecast(
 {
     public int TemperatureF =>
         32 + (int)(TemperatureC / 0.5556);
+}
+
+public partial class Program
+{
 }
 

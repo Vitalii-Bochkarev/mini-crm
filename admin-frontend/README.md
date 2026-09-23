@@ -1,5 +1,25 @@
 # React + Vite
 
+## Backend API address
+
+The frontend reads the backend base URL from `VITE_API_BASE_URL` at Vite startup/build time.
+
+Local development uses the safe value from `.env.development`:
+
+```text
+VITE_API_BASE_URL=http://localhost:5269
+```
+
+Start the local frontend as usual:
+
+```powershell
+npm.cmd run dev
+```
+
+For another environment, set `VITE_API_BASE_URL` explicitly in the build process before running `npm.cmd run build`. The value must be an absolute `http` or `https` URL and may include a base path. Credentials, query parameters, and fragments are rejected.
+
+`VITE_*` values are embedded into the browser bundle and are public. Never put passwords, JWT signing keys, connection strings, or other secrets in them.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

@@ -26,6 +26,9 @@ public sealed class AdminDbContext : DbContext
             builder.Property(user => user.IsActive).HasDefaultValue(true);
             builder.Property(user => user.PasswordHash).IsRequired();
             builder.Property(user => user.PasswordSalt).IsRequired();
+            builder.Property(user => user.TokenVersion)
+                .IsConcurrencyToken()
+                .HasDefaultValue(0);
             builder.HasIndex(user => user.Username)
                 .IsUnique()
                 .HasDatabaseName("IX_AdminUsers_Username");
