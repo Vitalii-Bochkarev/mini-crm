@@ -52,7 +52,7 @@ Nginx отдаёт интерфейс и передаёт `/api/*` в backend, �
 Нужны Git и запущенный Docker Desktop с Linux-контейнерами (на Windows — с WSL 2). Команды для PowerShell:
 
 ```powershell
-git clone --branch feature/frontend-enhancements https://github.com/Vitalii-Bochkarev/mini-crm.git
+git clone https://github.com/Vitalii-Bochkarev/mini-crm.git
 cd mini-crm
 Copy-Item .env.example .env
 ```
