@@ -50,6 +50,12 @@ namespace MyProject2.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("TokenVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("citext");

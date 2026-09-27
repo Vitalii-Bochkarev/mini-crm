@@ -16,6 +16,12 @@ obj/
 # ASP.NET
 appsettings.Development.json
 
+# Local Compose configuration (keep the examples tracked)
+.env
+.env.*
+!.env.example
+!admin-frontend/.env.development
+
 # Publish
 publish/
 build-output/

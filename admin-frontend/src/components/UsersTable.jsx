@@ -1,11 +1,13 @@
 import React from "react";
-import { formatDate } from "../utils/formatters";
+import { formatRole } from "../utils/formatters";
 
 function UsersTable({
   users,
   loading,
   error,
-  currentUsername,
+  currentUserId,
+  canEdit,
+  canDelete,
   onDeleteUser,
   onEditUser,
   deleteUserLoadingId,
@@ -99,16 +101,21 @@ function UsersTable({
                 Электронная почта
               </th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>
-                Создан
+                Роль
               </th>
               <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>
-                Действия
+                Статус
               </th>
+              {(canEdit || canDelete) && (
+                <th style={{ padding: "12px 16px", textAlign: "left", color: "#9ca3af", fontWeight: 600, fontSize: 13 }}>
+                  Действия
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {users.map((user, idx) => {
-              const isCurrentUser = user.username === currentUsername;
+              const isCurrentUser = user.id === currentUserId;
               const isDeleting = deleteUserLoadingId === user.id;
 
               return (
@@ -116,45 +123,55 @@ function UsersTable({
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{user.id}</td>
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{user.username}</td>
                   <td style={{ padding: "12px 16px", color: "#e6eef8" }}>{user.email || "—"}</td>
-                  <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>
-                    {formatDate(user.created)}
+                  <td style={{ padding: "12px 16px", color: "#e6eef8" }}>
+                    {formatRole(user.role)}
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={() => onEditUser(user)}
-                        style={{
-                          border: "none",
-                          borderRadius: 8,
-                          padding: "8px 12px",
-                          background: "#2563eb",
-                          color: "#fff",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteUser(user)}
-                        disabled={isCurrentUser || isDeleting}
-                        style={{
-                          border: "none",
-                          borderRadius: 8,
-                          padding: "8px 12px",
-                          background: isCurrentUser ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
-                          color: "#fff",
-                          fontWeight: 700,
-                          cursor: isCurrentUser || isDeleting ? "not-allowed" : "pointer",
-                          opacity: isCurrentUser || isDeleting ? 0.75 : 1,
-                        }}
-                      >
-                        {isDeleting ? "Удаление..." : isCurrentUser ? "Защищён" : "Удалить"}
-                      </button>
-                    </div>
+                  <td style={{ padding: "12px 16px", color: user.isActive ? "#34d399" : "#fca5a5" }}>
+                    {user.isActive ? "Активен" : "Неактивен"}
                   </td>
+                  {(canEdit || canDelete) && (
+                    <td style={{ padding: "12px 16px" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={(event) => onEditUser(user, event.currentTarget)}
+                            style={{
+                              border: "none",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              background: "#2563eb",
+                              color: "#fff",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Изменить
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(event) => onDeleteUser(user, event.currentTarget)}
+                            disabled={isCurrentUser || isDeleting}
+                            title={isCurrentUser ? "Нельзя удалить текущего пользователя" : "Удалить пользователя"}
+                            style={{
+                              border: "none",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              background: isCurrentUser ? "rgba(107, 114, 128, 0.35)" : "#dc2626",
+                              color: "#fff",
+                              fontWeight: 700,
+                              cursor: isCurrentUser || isDeleting ? "not-allowed" : "pointer",
+                              opacity: isCurrentUser || isDeleting ? 0.75 : 1,
+                            }}
+                          >
+                            {isDeleting ? "Удаление..." : isCurrentUser ? "Защищён" : "Удалить"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}

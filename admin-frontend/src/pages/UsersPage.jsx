@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useEffect, useId, useRef } from "react";
+import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import CreateUserForm from "../components/CreateUserForm";
+import FieldErrorMessages from "../components/FieldErrorMessages";
+import Modal from "../components/Modal";
 import UsersTable from "../components/UsersTable";
 import { ROLE_OPTIONS } from "../utils/formatters";
 
@@ -7,8 +10,12 @@ function UsersPage({
   users,
   usersLoading,
   usersError,
-  currentUsername,
+  currentUserId,
+  permissions,
   onDeleteUser,
+  userToDelete,
+  onConfirmDeleteUser,
+  onCloseDeleteUser,
   onEditUser,
   deleteUserLoadingId,
   deleteUserError,
@@ -17,6 +24,7 @@ function UsersPage({
   onCreateUser,
   createUserLoading,
   createUserError,
+  createUserFieldErrors,
   createUserSuccess,
   editUser,
   editUserForm,
@@ -24,18 +32,41 @@ function UsersPage({
   onEditUserSubmit,
   editUserLoading,
   editUserError,
+  editUserFieldErrors,
   onCloseEditUser,
 }) {
+  const editFormId = useId();
+  const editTriggerRef = useRef(null);
+  const deleteTriggerRef = useRef(null);
+  const listFocusRef = useRef(null);
+  const editUsernameRef = useRef(null);
+  const editEmailRef = useRef(null);
+  const editRoleRef = useRef(null);
+  const editPasswordRef = useRef(null);
+
+  useEffect(() => {
+    const firstInvalidField = [
+      ["username", editUsernameRef],
+      ["email", editEmailRef],
+      ["role", editRoleRef],
+      ["password", editPasswordRef],
+    ].find(([field, ref]) => editUserFieldErrors[field]?.length && !ref.current?.disabled);
+    firstInvalidField?.[1].current?.focus();
+  }, [editUserFieldErrors]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <CreateUserForm
-        formData={createUserForm}
-        onFieldChange={onCreateUserFieldChange}
-        onSubmit={onCreateUser}
-        loading={createUserLoading}
-        error={createUserError}
-        success={createUserSuccess}
-      />
+      {permissions.canCreate && (
+        <CreateUserForm
+          formData={createUserForm}
+          onFieldChange={onCreateUserFieldChange}
+          onSubmit={onCreateUser}
+          loading={createUserLoading}
+          error={createUserError}
+          fieldErrors={createUserFieldErrors}
+          success={createUserSuccess}
+        />
+      )}
 
       <div
         style={{
@@ -47,7 +78,7 @@ function UsersPage({
         }}
       >
         <div style={{ marginBottom: 20 }}>
-          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Пользователи системы</h3>
+          <h3 ref={listFocusRef} tabIndex={-1} style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Пользователи системы</h3>
           <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
             Управляйте пользователями системы и их доступом.
           </p>
@@ -57,93 +88,75 @@ function UsersPage({
           users={users}
           loading={usersLoading}
           error={usersError}
-          currentUsername={currentUsername}
-          onDeleteUser={onDeleteUser}
-          onEditUser={onEditUser}
+          currentUserId={currentUserId}
+          canEdit={permissions.canEditUsers}
+          canDelete={permissions.canDelete}
+          onDeleteUser={(user, trigger) => {
+            deleteTriggerRef.current = trigger;
+            onDeleteUser(user);
+          }}
+          onEditUser={(user, trigger) => {
+            editTriggerRef.current = trigger;
+            onEditUser(user);
+          }}
           deleteUserLoadingId={deleteUserLoadingId}
-          deleteUserError={deleteUserError}
         />
       </div>
 
+      {userToDelete && (
+        <ConfirmDeleteDialog
+          title="Удаление пользователя"
+          name={userToDelete.username}
+          loading={deleteUserLoadingId !== null}
+          error={deleteUserError}
+          onConfirm={onConfirmDeleteUser}
+          onClose={onCloseDeleteUser}
+          returnFocusRef={deleteTriggerRef}
+          fallbackFocusRef={listFocusRef}
+        />
+      )}
+
       {editUser && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.82)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-            zIndex: 30,
-          }}
+        <Modal
+          title="Изменение пользователя"
+          loading={editUserLoading}
+          onClose={onCloseEditUser}
+          returnFocusRef={editTriggerRef}
+          fallbackFocusRef={listFocusRef}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 520,
-              borderRadius: 20,
-              background: "linear-gradient(180deg, #111827 0%, #0b1220 100%)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: "0 24px 80px rgba(15, 23, 42, 0.7)",
-              padding: 24,
-            }}
-          >
+          {editUserError && (
             <div
+              role="alert"
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
+                marginBottom: 16,
+                padding: 12,
+                borderRadius: 10,
+                color: "#fecaca",
+                backgroundColor: "rgba(220, 38, 38, 0.12)",
               }}
             >
-              <div>
-                <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Изменение пользователя</h3>
-                <p style={{ color: "#9ca3af", margin: "6px 0 0 0", fontSize: 14 }}>
-                  Измените имя пользователя, электронную почту и роль.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onCloseEditUser}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  color: "#cbd5e1",
-                  fontSize: 20,
-                  cursor: "pointer",
-                }}
-              >
-                ×
-              </button>
+              {editUserError}
             </div>
+          )}
 
-            {editUserError && (
-              <div
-                style={{
-                  marginBottom: 16,
-                  padding: 12,
-                  borderRadius: 10,
-                  color: "#fecaca",
-                  backgroundColor: "rgba(220, 38, 38, 0.12)",
-                }}
-              >
-                {editUserError}
-              </div>
-            )}
-
-            <form onSubmit={onEditUserSubmit}>
+          <form onSubmit={onEditUserSubmit}>
+            <fieldset disabled={editUserLoading} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
               <div style={{ display: "grid", gap: 16 }}>
                 <div>
                   <label
+                    htmlFor={`${editFormId}-username`}
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
                     Имя пользователя
                   </label>
                   <input
+                    ref={editUsernameRef}
+                    id={`${editFormId}-username`}
                     type="text"
                     value={editUserForm.username}
                     onChange={(e) => onEditUserFieldChange("username", e.target.value)}
+                    aria-invalid={editUserFieldErrors.username?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.username?.length ? `${editFormId}-username-errors` : undefined}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -154,18 +167,24 @@ function UsersPage({
                       padding: "12px 14px",
                     }}
                   />
+                  <FieldErrorMessages id={`${editFormId}-username-errors`} messages={editUserFieldErrors.username} />
                 </div>
 
                 <div>
                   <label
+                    htmlFor={`${editFormId}-email`}
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
                     Электронная почта
                   </label>
                   <input
+                    ref={editEmailRef}
+                    id={`${editFormId}-email`}
                     type="email"
                     value={editUserForm.email}
                     onChange={(e) => onEditUserFieldChange("email", e.target.value)}
+                    aria-invalid={editUserFieldErrors.email?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.email?.length ? `${editFormId}-email-errors` : undefined}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -176,18 +195,24 @@ function UsersPage({
                       padding: "12px 14px",
                     }}
                   />
+                  <FieldErrorMessages id={`${editFormId}-email-errors`} messages={editUserFieldErrors.email} />
                 </div>
 
                 <div>
                   <label
+                    htmlFor={`${editFormId}-role`}
                     style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
                   >
                     Роль
                   </label>
                   <select
+                    ref={editRoleRef}
+                    id={`${editFormId}-role`}
                     value={editUserForm.role}
                     onChange={(e) => onEditUserFieldChange("role", e.target.value)}
-                    disabled={editUser.username === currentUsername}
+                    disabled={editUser.id === currentUserId}
+                    aria-invalid={editUserFieldErrors.role?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.role?.length ? `${editFormId}-role-errors` : undefined}
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -196,8 +221,8 @@ function UsersPage({
                       background: "#0f172a",
                       color: "#e6eef8",
                       padding: "12px 14px",
-                      cursor: editUser.username === currentUsername ? "not-allowed" : "pointer",
-                      opacity: editUser.username === currentUsername ? 0.75 : 1,
+                      cursor: editUser.id === currentUserId ? "not-allowed" : "pointer",
+                      opacity: editUser.id === currentUserId ? 0.75 : 1,
                     }}
                   >
                     {ROLE_OPTIONS.map((role) => (
@@ -206,6 +231,55 @@ function UsersPage({
                       </option>
                     ))}
                   </select>
+                  <FieldErrorMessages id={`${editFormId}-role-errors`} messages={editUserFieldErrors.role} />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor={`${editFormId}-is-active`}
+                    style={{ display: "flex", alignItems: "center", color: "#9ca3af", fontSize: 13, cursor: "pointer" }}
+                  >
+                    <input
+                      id={`${editFormId}-is-active`}
+                      type="checkbox"
+                      checked={editUserForm.isActive}
+                      onChange={(e) => onEditUserFieldChange("isActive", e.target.checked)}
+                      style={{ marginRight: 10 }}
+                    />
+                    Активен
+                  </label>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor={`${editFormId}-password`}
+                    style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}
+                  >
+                    Новый пароль
+                  </label>
+                  <input
+                    ref={editPasswordRef}
+                    id={`${editFormId}-password`}
+                    type="password"
+                    value={editUserForm.password}
+                    onChange={(e) => onEditUserFieldChange("password", e.target.value)}
+                    autoComplete="new-password"
+                    aria-invalid={editUserFieldErrors.password?.length ? "true" : undefined}
+                    aria-describedby={editUserFieldErrors.password?.length ? `${editFormId}-password-errors` : undefined}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "#0f172a",
+                      color: "#e6eef8",
+                      padding: "12px 14px",
+                    }}
+                  />
+                  <FieldErrorMessages id={`${editFormId}-password-errors`} messages={editUserFieldErrors.password} />
+                  <p style={{ color: "#9ca3af", margin: "6px 0 0", fontSize: 12 }}>
+                    Оставьте поле пустым, чтобы сохранить текущий пароль.
+                  </p>
                 </div>
               </div>
 
@@ -213,13 +287,15 @@ function UsersPage({
                 <button
                   type="button"
                   onClick={onCloseEditUser}
+                  disabled={editUserLoading}
                   style={{
                     border: "1px solid rgba(255,255,255,0.08)",
                     borderRadius: 10,
                     padding: "10px 16px",
                     background: "transparent",
                     color: "#e6eef8",
-                    cursor: "pointer",
+                    cursor: editUserLoading ? "not-allowed" : "pointer",
+                    opacity: editUserLoading ? 0.75 : 1,
                   }}
                 >
                   Отмена
@@ -241,9 +317,9 @@ function UsersPage({
                   {editUserLoading ? "Сохранение..." : "Сохранить изменения"}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
+            </fieldset>
+          </form>
+        </Modal>
       )}
     </div>
   );

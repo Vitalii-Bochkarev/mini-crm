@@ -11,6 +11,9 @@ public sealed class AdminUser
     public string Role { get; set; } = string.Empty;
 
     [JsonIgnore]
+    public int TokenVersion { get; set; }
+
+    [JsonIgnore]
     public string PasswordHash { get; set; } = string.Empty;
 
     [JsonIgnore]

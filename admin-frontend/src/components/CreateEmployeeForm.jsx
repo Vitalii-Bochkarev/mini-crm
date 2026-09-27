@@ -1,25 +1,73 @@
-import React from "react";
+import { useEffect, useId, useRef } from "react";
+import FieldErrorMessages from "./FieldErrorMessages";
 
-function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error, success, restaurants = [] }) {
+function CreateEmployeeForm({
+  formData,
+  onFieldChange,
+  onSubmit,
+  loading,
+  error,
+  fieldErrors = {},
+  success,
+  restaurants = [],
+  restaurantsLoading,
+  restaurantsError,
+  restaurantsRetrying,
+  onRetryRestaurants,
+  mode = "create",
+  embedded = false,
+  currentRestaurantId = "",
+  onCancel,
+}) {
+  const isEdit = mode === "edit";
+  const submitDisabled = loading || restaurantsLoading || Boolean(restaurantsError) || restaurants.length === 0;
+  const formId = useId();
+  const firstNameId = `${formId}-first-name`;
+  const lastNameId = `${formId}-last-name`;
+  const positionId = `${formId}-position`;
+  const salaryId = `${formId}-salary`;
+  const restaurantId = `${formId}-restaurant`;
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const positionRef = useRef(null);
+  const salaryRef = useRef(null);
+  const restaurantRef = useRef(null);
+
+  useEffect(() => {
+    const firstInvalidField = [
+      ["firstName", firstNameRef],
+      ["lastName", lastNameRef],
+      ["position", positionRef],
+      ["salary", salaryRef],
+      ["restaurantId", restaurantRef],
+    ].find(([field, ref]) => fieldErrors[field]?.length && !ref.current?.disabled);
+    firstInvalidField?.[1].current?.focus();
+  }, [fieldErrors]);
+
   return (
     <div
       style={{
-        backgroundColor: "#111827",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.04)",
-        boxShadow: "0 8px 30px rgba(2,6,23,0.7)",
-        padding: 24,
+        backgroundColor: embedded ? "transparent" : "#111827",
+        borderRadius: embedded ? 0 : 14,
+        border: embedded ? "none" : "1px solid rgba(255,255,255,0.04)",
+        boxShadow: embedded ? "none" : "0 8px 30px rgba(2,6,23,0.7)",
+        padding: embedded ? 0 : 24,
       }}
     >
-      <div style={{ marginBottom: 20 }}>
-        <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>Добавление сотрудника</h3>
-        <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
-          Добавьте нового сотрудника ресторана.
-        </p>
-      </div>
+      {!embedded && (
+        <div style={{ marginBottom: 20 }}>
+          <h3 style={{ color: "#e6eef8", margin: 0, fontSize: 20 }}>
+            {isEdit ? "Изменение сотрудника" : "Добавление сотрудника"}
+          </h3>
+          <p style={{ color: "#9ca3af", margin: "8px 0 0 0", fontSize: 14 }}>
+            {isEdit ? "Измените данные сотрудника." : "Добавьте нового сотрудника ресторана."}
+          </p>
+        </div>
+      )}
 
       {error && (
         <div
+          role="alert"
           style={{
             marginBottom: 16,
             padding: 12,
@@ -48,13 +96,17 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
 
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <div>
-          <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
+          <label htmlFor={firstNameId} style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
             Имя *
           </label>
           <input
+            ref={firstNameRef}
+            id={firstNameId}
             type="text"
             value={formData.firstName}
             onChange={(e) => onFieldChange("firstName", e.target.value)}
+            aria-invalid={fieldErrors.firstName?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.firstName?.length ? `${firstNameId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -66,16 +118,21 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
             }}
             required
           />
+          <FieldErrorMessages id={`${firstNameId}-errors`} messages={fieldErrors.firstName} />
         </div>
 
         <div>
-          <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
+          <label htmlFor={lastNameId} style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
             Фамилия *
           </label>
           <input
+            ref={lastNameRef}
+            id={lastNameId}
             type="text"
             value={formData.lastName}
             onChange={(e) => onFieldChange("lastName", e.target.value)}
+            aria-invalid={fieldErrors.lastName?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.lastName?.length ? `${lastNameId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -87,16 +144,21 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
             }}
             required
           />
+          <FieldErrorMessages id={`${lastNameId}-errors`} messages={fieldErrors.lastName} />
         </div>
 
         <div>
-          <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
+          <label htmlFor={positionId} style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
             Должность *
           </label>
           <input
+            ref={positionRef}
+            id={positionId}
             type="text"
             value={formData.position}
             onChange={(e) => onFieldChange("position", e.target.value)}
+            aria-invalid={fieldErrors.position?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.position?.length ? `${positionId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -108,17 +170,22 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
             }}
             required
           />
+          <FieldErrorMessages id={`${positionId}-errors`} messages={fieldErrors.position} />
         </div>
 
         <div>
-          <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
+          <label htmlFor={salaryId} style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
             Зарплата
           </label>
           <input
+            ref={salaryRef}
+            id={salaryId}
             type="number"
             step="0.01"
             value={formData.salary}
             onChange={(e) => onFieldChange("salary", parseFloat(e.target.value) || 0)}
+            aria-invalid={fieldErrors.salary?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.salary?.length ? `${salaryId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -129,15 +196,20 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
               padding: "12px 14px",
             }}
           />
+          <FieldErrorMessages id={`${salaryId}-errors`} messages={fieldErrors.salary} />
         </div>
 
         <div style={{ gridColumn: "1 / -1" }}>
-          <label style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
+          <label htmlFor={restaurantId} style={{ display: "block", color: "#9ca3af", fontSize: 13, marginBottom: 6 }}>
             Ресторан *
           </label>
           <select
+            ref={restaurantRef}
+            id={restaurantId}
             value={formData.restaurantId}
             onChange={(e) => onFieldChange("restaurantId", e.target.value)}
+            aria-invalid={fieldErrors.restaurantId?.length ? "true" : undefined}
+            aria-describedby={fieldErrors.restaurantId?.length ? `${restaurantId}-errors` : undefined}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -148,14 +220,52 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
               padding: "12px 14px",
             }}
             required
+            disabled={restaurantsLoading}
           >
-            <option value="">Выберите ресторан</option>
+            <option value="">
+              {restaurantsLoading
+                ? "Загрузка ресторанов..."
+                : restaurants.length === 0
+                  ? "Нет доступных активных ресторанов"
+                  : "Выберите ресторан"}
+            </option>
             {restaurants.map((restaurant) => (
-              <option key={restaurant.id} value={restaurant.id}>
-                {restaurant.name}
+              <option
+                key={restaurant.id}
+                value={restaurant.id}
+                disabled={isEdit && !restaurant.isActive && restaurant.id !== currentRestaurantId}
+              >
+                {restaurant.name}{!restaurant.isActive ? " (неактивен)" : ""}
               </option>
             ))}
           </select>
+          <FieldErrorMessages id={`${restaurantId}-errors`} messages={fieldErrors.restaurantId} />
+          {(restaurantsError || restaurantsRetrying) && (
+            <div style={{ marginTop: 8 }}>
+              {restaurantsError && (
+                <div style={{ color: "#fecaca", fontSize: 13 }}>
+                  {restaurantsError}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onRetryRestaurants}
+                disabled={restaurantsLoading}
+                style={{
+                  marginTop: 8,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  background: "#0f172a",
+                  color: "#e6eef8",
+                  cursor: restaurantsLoading ? "not-allowed" : "pointer",
+                  opacity: restaurantsLoading ? 0.6 : 1,
+                }}
+              >
+                {restaurantsLoading ? "Повторная загрузка..." : "Повторить"}
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, gridColumn: "1 / -1" }}>
@@ -170,24 +280,49 @@ function CreateEmployeeForm({ formData, onFieldChange, onSubmit, loading, error,
           </label>
         </div>
 
-        <div style={{ gridColumn: "1 / -1" }}>
+        <div style={{ display: "flex", gap: 12, gridColumn: "1 / -1" }}>
+          {isEdit && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              style={{
+                flex: 1,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.08)",
+                padding: "12px 24px",
+                background: "#0f172a",
+                color: "#e6eef8",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.75 : 1,
+              }}
+            >
+              Отмена
+            </button>
+          )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitDisabled}
             style={{
-              width: "100%",
+              flex: 1,
               borderRadius: 10,
               border: "none",
               padding: "12px 24px",
-              background: loading ? "rgba(107, 114, 128, 0.35)" : "#2563eb",
+              background: submitDisabled ? "rgba(107, 114, 128, 0.35)" : "#2563eb",
               color: "white",
               fontSize: 14,
               fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.75 : 1,
+              cursor: submitDisabled ? "not-allowed" : "pointer",
+              opacity: submitDisabled ? 0.75 : 1,
             }}
           >
-            {loading ? "Добавление..." : "Добавить сотрудника"}
+            {loading
+              ? isEdit ? "Сохранение..." : "Добавление..."
+              : restaurantsLoading
+                ? "Загрузка ресторанов..."
+                : isEdit ? "Сохранить изменения" : "Добавить сотрудника"}
           </button>
         </div>
       </form>

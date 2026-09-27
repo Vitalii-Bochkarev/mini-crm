@@ -282,16 +282,27 @@ public sealed class AdminRepository
             return false;
         }
 
+        var normalizedRole = NormalizeRole(role);
+        var passwordChanged = !string.IsNullOrWhiteSpace(password);
+        var securityStateChanged = user.IsActive != isActive ||
+            !string.Equals(user.Role, normalizedRole, StringComparison.Ordinal) ||
+            passwordChanged;
+
         user.Username = username.Trim();
         user.Email = email.Trim();
         user.IsActive = isActive;
-        user.Role = NormalizeRole(role);
+        user.Role = normalizedRole;
 
-        if (!string.IsNullOrWhiteSpace(password))
+        if (passwordChanged)
         {
-            var (hash, salt) = PasswordHasher.HashPassword(password);
+            var (hash, salt) = PasswordHasher.HashPassword(password!);
             user.PasswordHash = hash;
             user.PasswordSalt = salt;
+        }
+
+        if (securityStateChanged)
+        {
+            user.TokenVersion = checked(user.TokenVersion + 1);
         }
 
         _dbContext.SaveChanges();
