@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-minicrm}
+      POSTGRES_USER: ${POSTGRES_USER:-minicrm_app}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - backend-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      Https__UseRedirection: "false"
+      Https__UseHsts: "false"
+      Cors__AllowedOrigins__0: http://localhost:${APP_PORT:-8080}
+    secrets:
+      - source: backend_connection_string
+        target: ConnectionStrings__DefaultConnection
+      - source: jwt_secret_key
+        target: Jwt__SecretKey
+      - source: seed_superadmin_password
+        target: SeedUsers__SuperAdminPassword
+      - source: seed_editor_password
+        target: SeedUsers__EditorPassword
+      - source: seed_viewer_password
+        target: SeedUsers__ViewerPassword
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - frontend-backend
+      - backend-db
+
+  frontend:
+    build:
+      context: ./admin-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - frontend-backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  frontend-backend:
+  backend-db:
+    internal: true
+
+volumes:
+  postgres_data:
+
+secrets:
+  # Compose reads these names from its project environment (including .env)
+  # and mounts only the secrets granted to each service under /run/secrets.
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+  backend_connection_string:
+    environment: BACKEND_CONNECTION_STRING
+  jwt_secret_key:
+    environment: JWT_SECRET_KEY
+  seed_superadmin_password:
+    environment: SEED_SUPERADMIN_PASSWORD
+  seed_editor_password:
+    environment: SEED_EDITOR_PASSWORD
+  seed_viewer_password:
+    environment: SEED_VIEWER_PASSWORD

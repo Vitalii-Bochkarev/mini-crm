@@ -23,6 +23,10 @@
     <Content Remove="MyProject2.Tests\**\*" />
     <EmbeddedResource Remove="MyProject2.Tests\**\*" />
     <None Remove="MyProject2.Tests\**\*" />
+
+    <Content Remove="admin-frontend\**\*" />
+    <EmbeddedResource Remove="admin-frontend\**\*" />
+    <None Remove="admin-frontend\**\*" />
   </ItemGroup>
 
 </Project>

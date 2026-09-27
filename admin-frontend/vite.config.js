@@ -11,12 +11,18 @@ function getApiBaseUrl(mode) {
     throw new Error('VITE_API_BASE_URL must be configured for this Vite mode.')
   }
 
+  if (value.replace(/\/+$/, '') === '/api') {
+    return '/api'
+  }
+
   let url
 
   try {
     url = new URL(value)
   } catch {
-    throw new Error('VITE_API_BASE_URL must be an absolute http or https URL.')
+    throw new Error(
+      'VITE_API_BASE_URL must be /api or an absolute http or https URL.',
+    )
   }
 
   if (

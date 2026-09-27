@@ -4,13 +4,22 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MyProject2.Admin;
 using Npgsql;
 
+if (args is ["--healthcheck", var healthCheckUrl])
+{
+    Environment.ExitCode = await RunHealthCheckAsync(healthCheckUrl);
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 const string frontendCorsPolicy = "Frontend";
 
 // Swagger
@@ -141,6 +150,8 @@ builder.Services.AddDbContext<AdminDbContext>(options =>
 builder.Services.AddScoped<AdminRepository>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks()
+    .AddCheck<PostgreSqlHealthCheck>("postgresql", tags: ["ready"]);
 
 var app = builder.Build();
 
@@ -188,12 +199,16 @@ using (var scope = app.Services.CreateScope())
 
 app.UseExceptionHandler();
 
-if (!app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment() &&
+    builder.Configuration.GetValue("Https:UseHsts", true))
 {
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+if (builder.Configuration.GetValue("Https:UseRedirection", true))
+{
+    app.UseHttpsRedirection();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -232,6 +247,18 @@ app.UseStatusCodePages(async context =>
 });
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = WriteHealthResponseAsync
+}).AllowAnonymous();
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready"),
+    ResponseWriter = WriteHealthResponseAsync
+}).AllowAnonymous();
 
 var summaries = new[]
 {
@@ -996,6 +1023,42 @@ static string GetRequiredConfigurationValue(IConfiguration configuration, string
     }
 
     return value;
+}
+
+static Task WriteHealthResponseAsync(HttpContext context, HealthReport report)
+{
+    context.Response.ContentType = "text/plain; charset=utf-8";
+    return context.Response.WriteAsync(
+        report.Status == HealthStatus.Healthy ? "Healthy" : "Unhealthy",
+        context.RequestAborted);
+}
+
+static async Task<int> RunHealthCheckAsync(string healthCheckUrl)
+{
+    if (!Uri.TryCreate(healthCheckUrl, UriKind.Absolute, out var uri) ||
+        uri.Scheme != Uri.UriSchemeHttp)
+    {
+        return 1;
+    }
+
+    try
+    {
+        using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+        using var client = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(5)
+        };
+        using var response = await client.GetAsync(uri);
+        return response.IsSuccessStatusCode ? 0 : 1;
+    }
+    catch (HttpRequestException)
+    {
+        return 1;
+    }
+    catch (TaskCanceledException)
+    {
+        return 1;
+    }
 }
 
 internal sealed record JwtSettings(string Issuer, string Audience, string SecretKey, int ExpireMinutes);
